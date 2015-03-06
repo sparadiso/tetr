@@ -14,18 +14,16 @@ class MCDriver
     std::vector<Tetrahedron*> particles;
 
     // List of Moves we'll use (particle vs cell)
-    std::vector<Move*> moves;
+    std::vector<ParticleMove*> particle_moves;
+    std::vector<CellMove*> cell_moves;
+
+    // Thermo parameters
+    Real BetaP;
 
     // Move parameters
-    Real dv_max; // Maximum cell volume move
-    Real dr_max; // Maximum particle displacement move
-    Real droll_max, dpitch_max, dyaw_max; // Maximum delta rotations along each axis
+    Real p_cell_move; // Probability of choosing a cell move (shape or volume) vs single particle move
 
-    // Maintain runtime statistics on move acceptance/rejection rate
-    int moves_accepted[N_MOVES], moves_attempted[N_MOVES];
-
-    MCDriver(int n_particles, Real dr, Real droll, Real dpitch, Real dyaw,
-                                        Real dx, Real dy, Real dz);
+    MCDriver(int n_particles, Real p_cell_move = 0.1, Real dr=0.1, Real dtheta_particle=0.2, Real dtheta_cell = 0.2, Real dv=0.1);
 
     void MakeMove();
     void PerformTranslationMove();

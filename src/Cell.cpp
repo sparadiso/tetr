@@ -6,6 +6,12 @@ Cell::Cell()
     this->h.setIdentity();
 }
 
+Real Cell::GetVolume()
+{
+    // Return the volume of the cell (det(h))
+    return this->h.determinant();
+}
+
 // Return the new position vector corresponding to wrapping the input vector around the periodic box.
 Vector Cell::PeriodicImage(Vector &v)
 {

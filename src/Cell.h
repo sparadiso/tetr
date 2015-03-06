@@ -9,9 +9,11 @@ class Cell
     // Cell tensor
     Matrix h;
 
+    // Constructor
     Cell();
 
-//    void Update();
+    // Methods
+    Real GetVolume();
     Vector PeriodicImage(Vector &v);
     std::string ToString();
 };

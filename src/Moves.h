@@ -13,7 +13,9 @@ class Move
 {
     public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+    Real delta_max;
 
+    Move(Real delta_max);
     virtual void Apply() = 0;
     virtual void Undo() = 0;
 };
@@ -24,16 +26,15 @@ class ParticleMove: public Move
     public:
     Tetrahedron *particle;
 
-    ParticleMove(Tetrahedron *t);
+    ParticleMove(Tetrahedron *t, Real delta_max);
 };
 
 class ParticleTranslation: public ParticleMove
 {
     public:
-    Real dr_max;
     Vector *dr;
 
-    ParticleTranslation(Tetrahedron *t, Real dr_max);
+    ParticleTranslation(Tetrahedron *t, Real delta_max);
     void Apply();
     void Undo();
 };
@@ -41,10 +42,9 @@ class ParticleTranslation: public ParticleMove
 class ParticleRotation: public ParticleMove
 {
     public:
-    Real droll, dpitch, dyaw;
     Matrix rot_inverse;
 
-    ParticleRotation(Tetrahedron *t, Real droll, Real dpitch, Real dyaw);
+    ParticleRotation(Tetrahedron *t, Real delta_max);
     void Apply();
     void Undo();
 };
@@ -55,20 +55,17 @@ class CellMove: public Move
     public:
     Cell *cell;
 
-    CellMove(Cell *c);
+    CellMove(Cell *c, Real delta_max);
 };
 
 class CellShapeMove: public CellMove
 {
     public:
-    Real dx_max, dy_max, dz_max;
         
     // Last move info for Undo()
-    Vector dr_last;
-    Real scale;
-    int vector_index;
+    Matrix h_old;
 
-    CellShapeMove(Cell *c, Real dx, Real dy, Real dz);
+    CellShapeMove(Cell *c, Real delta_max);
     void Apply();
     void Undo();
 };

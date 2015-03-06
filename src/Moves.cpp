@@ -1,16 +1,21 @@
 
 #include "Moves.h"
 
+// Super Move constructor
+Move::Move(Real delta_max)
+{
+    this->delta_max = delta_max;
+}
+
 // ParticleMove super class
-ParticleMove::ParticleMove(Tetrahedron *t)
+ParticleMove::ParticleMove(Tetrahedron *t, Real delta_max): Move(delta_max)
 {
 	this->particle = t;
 }
 
 // ParticleTranslation class
-ParticleTranslation::ParticleTranslation(Tetrahedron *t, Real dr_max): ParticleMove(t)
+ParticleTranslation::ParticleTranslation(Tetrahedron *t, Real delta_max): ParticleMove(t, delta_max)
 {
-    this->dr_max = dr_max;
 }
 
 void ParticleTranslation::Apply()
@@ -19,9 +24,11 @@ void ParticleTranslation::Apply()
     // If dr exists, release that memory before creating a new vector
     try { delete dr; } catch (int exception) {}
 
-    this->dr = new Vector(u(-this->dr_max, this->dr_max),
-                         u(-this->dr_max, this->dr_max),
-                         u(-this->dr_max, this->dr_max));
+    Real delta = this->delta_max;
+
+    this->dr = new Vector(u(-delta, delta),
+                         u(-delta, delta),
+                         u(-delta, delta));
 
     this->particle->Translate(this->dr);
 }
@@ -33,18 +40,17 @@ void ParticleTranslation::Undo()
 }
 
 // ParticleRotation class
-ParticleRotation::ParticleRotation(Tetrahedron *t, Real droll, Real dpitch, Real dyaw): ParticleMove(t)
+ParticleRotation::ParticleRotation(Tetrahedron *t, Real delta_max): ParticleMove(t, delta_max)
 {
-    this->droll = droll;
-    this->dpitch = dpitch;
-    this->dyaw = dyaw;
 }
 
 void ParticleRotation::Apply()
 {
-    Real roll = u(-this->droll, this->droll);
-    Real pitch = u(-this->dpitch, this->dpitch);
-    Real yaw = u(-this->dyaw, this->dyaw);
+    Real delta = this->delta_max;
+
+    Real roll = u(-delta, delta);
+    Real pitch = u(-delta, delta);
+    Real yaw = u(-delta, delta);
 
     this->rot_inverse = this->particle->Rotate(roll, pitch, yaw).inverse();
 }
@@ -54,40 +60,28 @@ void ParticleRotation::Undo()
 }
 
 // CellMove super class
-CellMove::CellMove(Cell *c)
+CellMove::CellMove(Cell *c, Real delta_max): Move(delta_max)
 {
 	this->cell = c;
 }
 
 // ParticleTranslation class
-CellShapeMove::CellShapeMove(Cell *c, Real dx, Real dy, Real dz): CellMove(c)
+CellShapeMove::CellShapeMove(Cell *c, Real delta_max): CellMove(c, delta_max)
 {
-    this->dx_max = dx;
-    this->dy_max = dy;
-    this->dz_max = dz;
 }
 void CellShapeMove::Apply()
 {
-    // Rotate a random basis vector
-    this->vector_index = rand() % 3;
-    Vector v(this->cell->h.col(this->vector_index));
+    // Record the old cell tensor in case we need to undo it
+    this->h_old = this->cell->h;
 
-    // Get original length
-    Real l0 = v.norm();
-    Real dx_last = u(-this->dx_max, this->dx_max);    
-    Real dy_last = u(-this->dy_max, this->dy_max);    
-    Real dz_last = u(-this->dz_max, this->dz_max);    
+    // Change a random element of each basis vector
+    Real delta = this->delta_max;
 
-    Vector dr(dx_last, dy_last, dz_last);
-    this->dr_last = dr;
-    
-    // After modifying the vector, we need to rescale to its original length
-    this->cell->h.col(this->vector_index) += dr;
-    this->scale = l0 / this->cell->h.col(this->vector_index).norm();
-    this->cell->h.col(this->vector_index) *= scale;
+    this->cell->h(0, rand() % 3) += u(-delta, delta);
+    this->cell->h(1, rand() % 3) += u(-delta, delta);
+    this->cell->h(2, rand() % 3) += u(-delta, delta);
 }
 void CellShapeMove::Undo()
 {
-    this->cell->h.col(this->vector_index) /= scale;
-    this->cell->h.col(this->vector_index) -= this->dr_last;    
+    this->cell->h = this->h_old;
 }

@@ -1,14 +1,16 @@
 #include "Globals.h"
 #include "MCDriver.h"
-#include <iostream>
-#include <stdio.h>
 
-MCDriver::MCDriver(int n_particles, 
-                Real dr, Real droll, Real dpitch, Real dyaw, // Particle Move Parameters
-                Real dx, Real dy, Real dz) : cell() // Cell Move Parameters
+MCDriver::MCDriver(int n_particles, Real p_cell_move,
+                Real dr, Real dtheta_particle, // Particle Move Parameters
+                Real dtheta_cell, Real dv) : cell() // Cell Move Parameters
 {
-    moves.push_back(new CellShapeMove(&this->cell, dx, dy, dz));
+    this->p_cell_move = p_cell_move;
 
+    // Populate the cell moves
+    this->cell_moves.push_back(new CellShapeMove(&this->cell, dtheta_cell));
+
+    // Initialize the particles in valid (non-overlapping) positions
     for(int i=0;i<n_particles;i++)
     {
         Real roll = (rand() % 1000) / 1000.0 * 2*PI;
@@ -22,14 +24,18 @@ MCDriver::MCDriver(int n_particles,
         this->particles.push_back(t);
 
         // Add a translation/rotation move for this particle
-        moves.push_back(new ParticleTranslation(t, dr));
+        this->particle_moves.push_back(new ParticleTranslation(t, dr));
 
-        moves.back()->Apply();
+        this->particle_moves.back()->Apply();
+
+        // Keep applying particle translations until a valid position is found
         while( this->CheckCollisionsWith(t, this->GetPeriodicGhosts()) )
         {
-            moves.back()->Apply();
+            this->particle_moves.back()->Apply();
         }
-        moves.push_back(new ParticleRotation(t, droll, dpitch, dyaw));
+           
+        // Populate the particle moves
+        this->particle_moves.push_back(new ParticleRotation(t, dtheta_particle));
     }
 }
 
@@ -38,13 +44,15 @@ void __FreeGhosts(std::vector<Tetrahedron*> ghosts)
     for (uint j=0;j<ghosts.size();j++) 
         delete ghosts[j];
 }
+
+// Returns TRUE if collisions ARE detected
 bool MCDriver::CheckCollisionsWith(Tetrahedron *t, std::vector<Tetrahedron*> ghosts)
 {
     // First, check collisions with other particles
     for(uint i=0;i<particles.size();i++)
         if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > 1E-5 )
         {
-            __FreeGhosts(ghosts);
+            std::cout << "Collided with other particle" << std::endl;
             return true;
         }
 
@@ -52,41 +60,78 @@ bool MCDriver::CheckCollisionsWith(Tetrahedron *t, std::vector<Tetrahedron*> gho
     for(uint i=0;i<ghosts.size();i++)
         if (t->Intersects(ghosts[i]))
         {
-            __FreeGhosts(ghosts);
+            std::cout << "Collided with image particle" << std::endl;
             return true;
         }
-
-    // If no collisions, free up the ghost list then return
-    __FreeGhosts(ghosts);
 
     return false;
 }
 
+using namespace std;
+
 void MCDriver::MakeMove()
 {
-    // First, choose the move to make
-
-    int move_index = rand() % this->moves.size();
-
-    Move *m = this->moves[move_index];
-    m->Apply();
-
+    // Assume the move is good until proven otherwise
     bool accepted = true;
 
-    // If this is a ParticleMove, then check collisions with the moved particle
-    try 
-    { 
-        ParticleMove *pmove = reinterpret_cast<ParticleMove*>(m); 
-        accepted = this->CheckCollisionsWith(pmove->particle, this->GetPeriodicGhosts());
-    } 
-    catch(int e){}
+    Move *AttemptedMove;
+        
+    // First, choose the move to make
+    if (u(0, 1) < this->p_cell_move)
+    {
+        // Make a CellMove (shape or volume change)
+        int move_index = rand() % this->cell_moves.size();
+        CellMove *move = this->cell_moves[move_index];
+        AttemptedMove = move;
 
-    //CHECK IF VALID
+        // Apply the move and record the change in cell volume
+        Real V_Before = this->cell.GetVolume();
+        move->Apply();
+        Real V_After = this->cell.GetVolume();
+
+        // Compute ghost images if this is a volume move
+        std::vector<Tetrahedron*> ghosts = this->GetPeriodicGhosts();
+
+        for(uint i=0;i<this->particles.size();i++)
+        {
+            // Check for collisions - CheckCollisionsWith returns true if collisions are detected
+            accepted = !(this->CheckCollisionsWith(this->particles[i], ghosts));
+        }
+        
+        // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor
+        if(accepted)
+        {
+            accepted = u(0,1) < exp(-this->BetaP*(V_After-V_Before));
+        }
+
+        // Free up the ghost images
+        __FreeGhosts(ghosts);
+    }
+    else
+    {
+        // randomly select a particle move
+        int move_index = rand() % this->particle_moves.size();
+        ParticleMove *move = this->particle_moves[move_index];
+        AttemptedMove = move;
+
+        move->Apply();
+
+        // Compute ghost images 
+        std::vector<Tetrahedron*> ghosts = this->GetPeriodicGhosts();
+        
+        // Check for collisions - CheckCollisionsWith returns true if collisions are detected
+        accepted = !(this->CheckCollisionsWith(move->particle, ghosts));
+
+        __FreeGhosts(ghosts);
+    }
+
     if(!accepted)
-        m->Undo();
+    {
+        AttemptedMove->Undo();
+    }
 }
 
-// NOT FINISHED. 
+// Generate all periodic images of the particles in the cell
 std::vector<Tetrahedron*> MCDriver::GetPeriodicGhosts()
 {
     std::vector<Tetrahedron*> ghosts;
@@ -162,8 +207,16 @@ std::string MCDriver::ToString()
     // Now the particles
     for(uint i=0;i<this->particles.size();i++)
     {
-        s += this->particles[i]->ToString();
+        s += string("particle: ") + this->particles[i]->ToString() + "\n";
     }
+
+    // Now the ghosts
+    std::vector<Tetrahedron*> ghosts = this->GetPeriodicGhosts();
+    for(uint i=0;i<ghosts.size();i++)
+    {
+        s += string("ghost: ") + ghosts[i]->ToString() + "\n";
+    }
+    __FreeGhosts(ghosts);
 
     return s;
 }
