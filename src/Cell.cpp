@@ -19,7 +19,7 @@ Vector Cell::PartialCoords(Vector v)
 }
 
 // Return the new position vector corresponding to wrapping the input vector around the periodic box.
-void Cell::WrapShape(Tetrahedron *t)
+void Cell::WrapShape(Shape *t)
 {
     // Wrap the shape back to within the bounds of the cell
     Vector old_com = t->GetCOM();

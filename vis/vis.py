@@ -73,7 +73,7 @@ class Tetrahedron(object):
         y = self.hull.points[:, 1] + origin[1]
         z = self.hull.points[:, 2] + origin[2]
 
-        lst = list(np.mean(self.points, axis=0))
-        print np.transpose(lst)
-        mlab.points3d(*np.transpose(lst))
-        #mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap=colormap, opacity=alpha)
+        if len(self.points) == 1:
+            mlab.points3d(*np.transpose(self.points))
+        else:
+            mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap=colormap, opacity=alpha)

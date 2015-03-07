@@ -1,4 +1,5 @@
 #pragma once
+
 #include "Globals.h"
 #include "Shape.h"
 
@@ -10,4 +11,5 @@ class Sphere: public Shape
 
     // Implement sphere-sphere intersection
     bool Intersects(Shape *t2);
+    Real GetVolume();
 };

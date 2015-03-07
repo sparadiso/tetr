@@ -6,15 +6,18 @@ Move::Move(Real delta_max)
 {
     this->delta_max = delta_max;
 }
+Move::~Move(){}
+CellMove::~CellMove(){}
+ParticleMove::~ParticleMove(){}
 
 // ParticleMove super class
-ParticleMove::ParticleMove(Tetrahedron *t, Real delta_max): Move(delta_max)
+ParticleMove::ParticleMove(Shape *t, Real delta_max): Move(delta_max)
 {
 	this->particle = t;
 }
 
 // ParticleTranslation class
-ParticleTranslation::ParticleTranslation(Tetrahedron *t, Real delta_max): ParticleMove(t, delta_max)
+ParticleTranslation::ParticleTranslation(Shape *t, Real delta_max): ParticleMove(t, delta_max)
 {
 }
 
@@ -41,7 +44,7 @@ void ParticleTranslation::Undo()
 }
 
 // ParticleRotation class
-ParticleRotation::ParticleRotation(Tetrahedron *t, Real delta_max): ParticleMove(t, delta_max)
+ParticleRotation::ParticleRotation(Shape *t, Real delta_max): ParticleMove(t, delta_max)
 {
 }
 
@@ -80,12 +83,10 @@ void CellShapeMove::Apply()
     Real delta = this->delta_max;
 
     int i = u(0, 3);
-    int j = u(0,3);
+    int j = u(0, 3);
+
     this->cell->h(i, i) += u(-delta, delta);
-    //this->cell->h(0,0) -= 0.05;
-    
-//        if (this->cell->h(i, j) < 0.5) 
-//            this->cell->h(i, j) = 0.5;
+//    this->cell->h(i, j) += u(-delta, delta);
 }
 void CellShapeMove::Undo()
 {

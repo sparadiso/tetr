@@ -18,4 +18,5 @@ class Shape
 
     // Abstract methods to be implemented in Sphere/Tetrahedron
     virtual bool Intersects(Shape *s) = 0;
+    virtual Real GetVolume() = 0;
 };

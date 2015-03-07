@@ -13,4 +13,5 @@ class Tetrahedron: public Shape
     // Implement intersection with other Tetrahedra (if this were an actual library, of course, this would have to work between any two Shapes).
     // Here, we just assume t2 is another Tetrahedron.
     bool Intersects(Shape *t2);
+    Real GetVolume();
 };

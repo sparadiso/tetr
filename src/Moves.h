@@ -1,9 +1,8 @@
-#ifndef MOVES_H_
-#define MOVES_H_
+#pragma once
 
 #include "Globals.h"
 #include "Cell.h"
-#include "Tetrahedron.h"
+#include "Shape.h"
 
 enum MoveID { PARTICLE_TRANSLATION, PARTICLE_ROTATION, CELL_VOLUME, CELL_SHAPE,
              N_MOVES };
@@ -18,15 +17,18 @@ class Move
     Move(Real delta_max);
     virtual void Apply() = 0;
     virtual void Undo() = 0;
+    virtual ~Move();
 };
 
 // Particle moves
 class ParticleMove: public Move
 {
     public:
-    Tetrahedron *particle;
+    Shape *particle;
 
-    ParticleMove(Tetrahedron *t, Real delta_max);
+    ParticleMove(Shape *t, Real delta_max);
+
+    virtual ~ParticleMove();
 };
 
 class ParticleTranslation: public ParticleMove
@@ -34,7 +36,7 @@ class ParticleTranslation: public ParticleMove
     public:
     Vector *dr;
 
-    ParticleTranslation(Tetrahedron *t, Real delta_max);
+    ParticleTranslation(Shape *t, Real delta_max);
     void Apply();
     void Undo();
 };
@@ -44,7 +46,7 @@ class ParticleRotation: public ParticleMove
     public:
     Matrix rot_inverse;
 
-    ParticleRotation(Tetrahedron *t, Real delta_max);
+    ParticleRotation(Shape *t, Real delta_max);
     void Apply();
     void Undo();
 };
@@ -56,6 +58,7 @@ class CellMove: public Move
     Cell *cell;
 
     CellMove(Cell *c, Real delta_max);
+    virtual ~CellMove();
 };
 
 class CellShapeMove: public CellMove
@@ -70,4 +73,3 @@ class CellShapeMove: public CellMove
     void Undo();
 };
 
-#endif

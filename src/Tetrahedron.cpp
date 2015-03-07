@@ -15,6 +15,11 @@ Tetrahedron::Tetrahedron(Vector origin, float roll, float pitch, float yaw): Sha
     this->Rotate(roll, pitch, yaw);
 }
 
+Real Tetrahedron::GetVolume()
+{
+    return 1.0 / (6*sqrt(2.0));
+}
+
 // ========================================================================================================
 // Intersects - Returns `true` if the two Tetrahedra (`this` and `t2`) are intersecting, `false` otherwise
 // ========================================================================================================

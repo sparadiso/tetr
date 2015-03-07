@@ -1,5 +1,5 @@
 # Set compiler flags
-CFLAGS = -O3 -Wall -std=c++11
+CFLAGS = -O3 -Wall -std=c++11 
 DBG_CFLAGS = -g -Wall -std=c++11
 
 # Add external headers
@@ -41,3 +41,4 @@ test:
 # Clean!
 clean: 
 	rm -f $(objects) $(BIN_DIR)/$(target) $(target)
+	rm -f $(objects_dbg) $(BIN_DIR)/$(debug) $(debug)

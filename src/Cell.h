@@ -2,7 +2,7 @@
 #define CELL_H_
 
 #include "Globals.h"
-#include "Tetrahedron.h"
+#include "Shape.h"
 
 class Cell
 {
@@ -18,7 +18,7 @@ class Cell
     Vector PartialCoords(Vector v);
     Vector PeriodicImage(Vector v);
     std::string ToString();
-    void WrapShape(Tetrahedron *t);
+    void WrapShape(Shape *t);
 };
 
 #endif
