@@ -124,7 +124,7 @@ void MCDriver::MakeMove()
         AttemptedMove = move;
 
         Tetrahedron *t = move->particle;
-//        this->cell.WrapShape(t);
+        this->cell.WrapShape(t);
 
         Vector s_old = this->cell.PartialCoords(t->GetCOM());
         //std::cout << s_old << std::endl;

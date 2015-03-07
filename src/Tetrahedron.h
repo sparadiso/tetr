@@ -1,23 +1,16 @@
-#ifndef TETRAHEDRON_H_
-#define TETRAHEDRON_H_
-
-#include "Globals.h"
+#pragma once
+#include "Shape.h"
 
 // Defines a tetrahedron that lives in standard Cartesian space (orthogonal x,y,z bases) independent of unit cell shape. 
 // All issues associated with the cell tensor (including collision across PBCs) are handled in MCDriver.cpp
-class Tetrahedron
+class Tetrahedron: public Shape
 {
     public:
-    std::vector<Vector> vertices;
-
+    
+    //Constructor
     Tetrahedron(Vector origin, float roll=0, float pitch=0, float yaw=0);
 
-    Vector GetCOM();
-    bool Intersects(Tetrahedron *t2);
-    Matrix Rotate(float roll, float pitch, float yaw);
-    void Rotate(Matrix rot_matrix);
-    std::string ToString();
-    void Translate(Vector v);
+    // Implement intersection with other Tetrahedra (if this were an actual library, of course, this would have to work between any two Shapes).
+    // Here, we just assume t2 is another Tetrahedron.
+    bool Intersects(Shape *t2);
 };
-
-#endif

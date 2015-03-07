@@ -40,7 +40,7 @@ for fname in sorted(glob.glob("../out_*")):
 #                [t.paint(0.25, origin=e, colormap='autumn') for e in tr]
                 t.paint(0.90, colormap='gray')
 
-        #mlab.show()
+        mlab.show()
 
         mlab.savefig("out_{:02d}.png".format(i)); i+=1
         mlab.clf()

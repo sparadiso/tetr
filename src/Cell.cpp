@@ -15,9 +15,6 @@ Real Cell::GetVolume()
 Vector Cell::PartialCoords(Vector v)
 {
     Vector s = this->h.colPivHouseholderQr().solve(v);
-    Vector s2 = this->h.inverse()*v;
-    std::cout << "S Result: " << s << std::endl;
-    std::cout << "S2 Result: " << s2 << std::endl;
     return s;
 }
 

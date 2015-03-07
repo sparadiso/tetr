@@ -29,7 +29,9 @@ void PrintOutput(MCDriver &driver)
 
 Real PackingFraction(MCDriver &driver)
 {
-    return driver.particles.size() * 1.0 / (6*sqrt(2.0)) / driver.cell.GetVolume();
+    //return driver.particles.size() * 1.0 / (6*sqrt(2.0)) / driver.cell.GetVolume();
+    Real r3 = .5*.5*.5;
+    return driver.particles.size() * 4./3.*PI*r3 / driver.cell.GetVolume();
 }
 
 int main()
@@ -41,30 +43,17 @@ int main()
 //    Real dcell = .1;
 
     // Create the driver
-    MCDriver driver(5);
+    MCDriver driver(8);
     // Change some parameters
-    driver.p_cell_move = 0.1;
-    driver.BetaP=100000;
+    driver.p_cell_move = 0.2;
+    driver.BetaP=10000;
     driver.Beta=0;
     driver.SetCellShapeDelta(0.05);
 
-/*
-    for(int i=0;i<5;i++)
-    {
-        driver.cell.h(0, 0) -= 0.2;
-        
-        vector<Tetrahedron*> ghosts = driver.GetPeriodicGhosts();
-        driver.CheckCollisionsWith(driver.particles[0], ghosts);
-        MCDriver::__FreeGhosts(ghosts);
-
-        PrintOutput(driver);
-    }
-        cout << 1/0 << endl;
-*/
-
-    int total = 150000;
+    int total = 1500000;
     for(int i=0;i<total;i++)
     {
+        driver.BetaP = 1000. * i / total;
         // Print out every few steps
         if(i%(total/100)==0)
         {
