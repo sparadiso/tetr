@@ -18,21 +18,19 @@ class MCDriver
     std::vector<CellMove*> cell_moves;
 
     // Thermo parameters
-    Real BetaP;
+    Real BetaP, Beta;
 
     // Move parameters
     Real p_cell_move; // Probability of choosing a cell move (shape or volume) vs single particle move
 
-    MCDriver(int n_particles, Real p_cell_move = 0.1, Real dr=0.1, Real dtheta_particle=0.2, Real dtheta_cell = 0.2, Real dv=0.1);
+    MCDriver(int n_particles, Real p_cell_move = 0.1, Real dr_particle=0.1, Real dtheta_particle=0.2, Real dcell = 0.02);
 
-    void MakeMove();
-    void PerformTranslationMove();
-    void PerformRotationMove();
+    static void __FreeGhosts(std::vector<Tetrahedron*> ghosts);
 
     bool CheckCollisionsWith(Tetrahedron *t, std::vector<Tetrahedron*> ghosts);
-    void PerformCellVolumeMove(Real dv);
-    void PerformCellShapeMove(Real dv);
     std::vector<Tetrahedron*> GetPeriodicGhosts();
+    void MakeMove();
+    void SetCellShapeDelta(Real delta);
     std::string ToString();
 };
 

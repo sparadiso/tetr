@@ -22,7 +22,6 @@ void ParticleTranslation::Apply()
 {
     // We remember the details of this move so that it can be undone later if it results in a collision  
     // If dr exists, release that memory before creating a new vector
-    try { delete dr; } catch (int exception) {}
 
     Real delta = this->delta_max;
 
@@ -30,13 +29,15 @@ void ParticleTranslation::Apply()
                          u(-delta, delta),
                          u(-delta, delta));
 
-    this->particle->Translate(this->dr);
+    this->particle->Translate(*(this->dr));
 }
 void ParticleTranslation::Undo()
 {
     Vector dr_reverse(*this->dr);
     dr_reverse *= -1.0;
     this->particle->Translate(dr_reverse);
+
+    delete dr;
 }
 
 // ParticleRotation class
@@ -69,6 +70,7 @@ CellMove::CellMove(Cell *c, Real delta_max): Move(delta_max)
 CellShapeMove::CellShapeMove(Cell *c, Real delta_max): CellMove(c, delta_max)
 {
 }
+
 void CellShapeMove::Apply()
 {
     // Record the old cell tensor in case we need to undo it
@@ -77,9 +79,13 @@ void CellShapeMove::Apply()
     // Change a random element of each basis vector
     Real delta = this->delta_max;
 
-    this->cell->h(0, rand() % 3) += u(-delta, delta);
-    this->cell->h(1, rand() % 3) += u(-delta, delta);
-    this->cell->h(2, rand() % 3) += u(-delta, delta);
+    int i = u(0, 3);
+    int j = u(0,3);
+    this->cell->h(i, i) += u(-delta, delta);
+    //this->cell->h(0,0) -= 0.05;
+    
+//        if (this->cell->h(i, j) < 0.5) 
+//            this->cell->h(i, j) = 0.5;
 }
 void CellShapeMove::Undo()
 {

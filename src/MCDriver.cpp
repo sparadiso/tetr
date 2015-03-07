@@ -2,8 +2,8 @@
 #include "MCDriver.h"
 
 MCDriver::MCDriver(int n_particles, Real p_cell_move,
-                Real dr, Real dtheta_particle, // Particle Move Parameters
-                Real dtheta_cell, Real dv) : cell() // Cell Move Parameters
+                Real dr, Real dtheta_particle,  // Particle Move Parameters
+                Real dtheta_cell) : cell(n_particles)      // Cell Move Parameters
 {
     this->p_cell_move = p_cell_move;
 
@@ -17,8 +17,8 @@ MCDriver::MCDriver(int n_particles, Real p_cell_move,
         Real pitch = (rand() % 1000) / 1000.0 * 2*PI;
         Real yaw = (rand() % 1000) / 1000.0 * 2*PI;
         
-        // Initialize particle at the origin, then try translation moves until one sticks
-        Vector v(0, 0, 0);
+        // Initialize particle at the center, then try translation moves until one sticks
+        Vector v(.5*n_particles, .5*n_particles, .5*n_particles);
 
         Tetrahedron *t = new Tetrahedron(v, roll, pitch, yaw);
         this->particles.push_back(t);
@@ -39,7 +39,12 @@ MCDriver::MCDriver(int n_particles, Real p_cell_move,
     }
 }
 
-void __FreeGhosts(std::vector<Tetrahedron*> ghosts)
+void MCDriver::SetCellShapeDelta(Real delta)
+{
+    this->cell_moves[0]->delta_max = delta;
+}
+
+void MCDriver::__FreeGhosts(std::vector<Tetrahedron*> ghosts)
 {
     for (uint j=0;j<ghosts.size();j++) 
         delete ghosts[j];
@@ -48,11 +53,12 @@ void __FreeGhosts(std::vector<Tetrahedron*> ghosts)
 // Returns TRUE if collisions ARE detected
 bool MCDriver::CheckCollisionsWith(Tetrahedron *t, std::vector<Tetrahedron*> ghosts)
 {
+
     // First, check collisions with other particles
     for(uint i=0;i<particles.size();i++)
         if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > 1E-5 )
         {
-            std::cout << "Collided with other particle" << std::endl;
+//            std::cout << "Collided with other particle" << std::endl;
             return true;
         }
 
@@ -60,14 +66,12 @@ bool MCDriver::CheckCollisionsWith(Tetrahedron *t, std::vector<Tetrahedron*> gho
     for(uint i=0;i<ghosts.size();i++)
         if (t->Intersects(ghosts[i]))
         {
-            std::cout << "Collided with image particle" << std::endl;
+//            std::cout << "Collided with image particle" << std::endl;
             return true;
         }
 
     return false;
 }
-
-using namespace std;
 
 void MCDriver::MakeMove()
 {
@@ -96,12 +100,17 @@ void MCDriver::MakeMove()
         {
             // Check for collisions - CheckCollisionsWith returns true if collisions are detected
             accepted = !(this->CheckCollisionsWith(this->particles[i], ghosts));
+            if(!accepted)
+                break;
         }
         
         // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor
         if(accepted)
         {
-            accepted = u(0,1) < exp(-this->BetaP*(V_After-V_Before));
+            if (u(0,1) < exp(-this->BetaP*(V_After-V_Before)))
+                accepted = true;
+            else
+                accepted = false;
         }
 
         // Free up the ghost images
@@ -114,13 +123,34 @@ void MCDriver::MakeMove()
         ParticleMove *move = this->particle_moves[move_index];
         AttemptedMove = move;
 
+        Tetrahedron *t = move->particle;
+//        this->cell.WrapShape(t);
+
+        Vector s_old = this->cell.PartialCoords(t->GetCOM());
+        //std::cout << s_old << std::endl;
         move->Apply();
+        Vector s_new = this->cell.PartialCoords(t->GetCOM());
 
         // Compute ghost images 
         std::vector<Tetrahedron*> ghosts = this->GetPeriodicGhosts();
         
         // Check for collisions - CheckCollisionsWith returns true if collisions are detected
-        accepted = !(this->CheckCollisionsWith(move->particle, ghosts));
+        accepted = !(this->CheckCollisionsWith(t, ghosts));
+
+        // If no collisions, check on internal energy due to the potential
+        if(accepted)
+        {
+            // Parabolic potential 
+            Vector center(.5,.5,.5);
+            Real E_New = (s_new-center).norm();
+            Real E_Old = (s_old-center).norm();
+
+            Real p = exp(-this->Beta*(E_New-E_Old));
+            if (u(0,1) < p)
+                accepted = true;
+            else
+                accepted = false;
+        }
 
         __FreeGhosts(ghosts);
     }
@@ -134,10 +164,57 @@ void MCDriver::MakeMove()
 // Generate all periodic images of the particles in the cell
 std::vector<Tetrahedron*> MCDriver::GetPeriodicGhosts()
 {
+    Eigen::MatrixXd all_translations(26, 3);
+    all_translations <<  0, 0, 0,
+                        0, 0, 1,
+                        0, 0, 2,
+                        0, 1, 0,
+                        0, 1, 1,
+                        0, 1, 2,
+                        0, 2, 0,
+                        0, 2, 1,
+                        0, 2, 2,
+                        1, 0, 0,
+                        1, 0, 1,
+                        1, 0, 2,
+                        1, 1, 0,
+                        1, 1, 2,
+                        1, 2, 0,
+                        1, 2, 1,
+                        1, 2, 2,
+                        2, 0, 0,
+                        2, 0, 1,
+                        2, 0, 2,
+                        2, 1, 0,
+                        2, 1, 1,
+                        2, 1, 2,
+                        2, 2, 0,
+                        2, 2, 1,
+                        2, 2, 2;
+
+    all_translations.array() -= 1.;
+
+    Eigen::MatrixXd displacement_vectors = all_translations * this->cell.h;
+
     std::vector<Tetrahedron*> ghosts;
+
     for(uint i=0;i<particles.size();i++)
     {
         Tetrahedron *t = particles[i];
+        Vector com = t->GetCOM();
+
+        for(int j=0;j<26;j++)
+        {
+            Vector v(displacement_vectors.row(j));
+            if((com-v).norm() < 1. || true)
+            {
+                Tetrahedron *ghost = new Tetrahedron(*t);
+                ghost->Translate(v);
+                ghosts.push_back(ghost);
+            }
+        }
+
+        /*
         std::vector<Vector> displacements;
 
         for(uint j=0;j<t->vertices.size();j++)
@@ -145,12 +222,6 @@ std::vector<Tetrahedron*> MCDriver::GetPeriodicGhosts()
             Vector v = this->cell.PeriodicImage(t->vertices[j]);            
             Vector dv = v - t->vertices[j];
 
-//            std::cout << "Vertex: \n" << t->vertices[j] << std::endl;
-//            std::cout << "Image: \n" << v << std::endl;
-
-//            for(uint k=0;k<displacements.size();k++)
-//                std::cout << "Displacement: \n" << displacements[k] << std::endl;
-            
             bool repeat = false;
 
             if ( dv.norm() < 1E-5)
@@ -188,6 +259,7 @@ std::vector<Tetrahedron*> MCDriver::GetPeriodicGhosts()
 //            std::cout << "Ghost After: " << ghost->ToString() << std::endl;
             ghosts.push_back(ghost);
         }
+        */
     }
 
 //    for(uint i=0;i<ghosts.size();i++)
@@ -207,14 +279,14 @@ std::string MCDriver::ToString()
     // Now the particles
     for(uint i=0;i<this->particles.size();i++)
     {
-        s += string("particle: ") + this->particles[i]->ToString() + "\n";
+        s += std::string("particle: ") + this->particles[i]->ToString() + "\n";
     }
 
     // Now the ghosts
     std::vector<Tetrahedron*> ghosts = this->GetPeriodicGhosts();
     for(uint i=0;i<ghosts.size();i++)
     {
-        s += string("ghost: ") + ghosts[i]->ToString() + "\n";
+        s += std::string("ghost: ") + ghosts[i]->ToString() + "\n";
     }
     __FreeGhosts(ghosts);
 

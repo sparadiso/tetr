@@ -4,18 +4,10 @@ import numpy as np
 
 class Cell(object):
     def __init__(self, e0, e1, e2):
+        self.origin = [0,0,0]
         self.h = [np.array(e) for e in [e0,e1,e2]]
         self.h_inv = np.linalg.inv(self.h)
 
-        self.normals = []
-        self.normals.append(np.cross(e0, e1))
-        self.normals.append(np.cross(e0, e2))
-        self.normals.append(np.cross(e1, e2))
-
-        # normalize the normals
-        for i in range(len(self.normals)):
-            self.normals[i] /= np.linalg.norm(self.normals[i])
-    
     def getVolume(self):
         return np.dot(self.h[0], np.cross(self.h[1], self.h[2]))
 
@@ -26,14 +18,12 @@ class Cell(object):
 
     def is_inside(self, pt):
         s = np.dot(pt, self.h_inv)
-        print s
-        print self.h
-
-        print np.any(s>1)
 
         mlab.points3d(*pt, scale_factor=0.1)
 
-    def paint(self):
+    def paint(self, origin=[0,0,0]):
+        origin = np.array(origin)
+
         pts = []
 
         for i in range(8):
@@ -46,12 +36,12 @@ class Cell(object):
 
         self.hull = ConvexHull(pts)
 
-        x = self.hull.points[:, 0]
-        y = self.hull.points[:, 1]
-        z = self.hull.points[:, 2]
+        x = self.hull.points[:, 0] + origin[0]
+        y = self.hull.points[:, 1] + origin[1]
+        z = self.hull.points[:, 2] + origin[2]
 
-        o = [0,0,0]
-        [mlab.plot3d(*np.transpose([o, e])) for e in self.h]
+        o = origin
+        [mlab.plot3d(*np.transpose([o, e+o])) for e in self.h]
         mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap='gray', opacity=0.25)
 
 class Tetrahedron(object):
@@ -68,15 +58,19 @@ class Tetrahedron(object):
             for i in range(4):
                 self.points.append( [ pts[3*i+j] for j in range(3) ] )
 
+        self.points = np.array(self.points, float)
+
     def translate(self, *dr):
         for p in self.points:
             p += np.array(dr)
 
-    def paint(self, alpha=0.75):
+    def paint(self, alpha=0.75, origin=[0,0,0], colormap='gray'):
+        origin = np.array(origin)
+
         self.hull = ConvexHull(self.points)
 
-        x = self.hull.points[:, 0]
-        y = self.hull.points[:, 1]
-        z = self.hull.points[:, 2]
+        x = self.hull.points[:, 0] + origin[0]
+        y = self.hull.points[:, 1] + origin[1]
+        z = self.hull.points[:, 2] + origin[2]
 
-        mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap='gray', opacity=alpha)
+        mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap=colormap, opacity=alpha)

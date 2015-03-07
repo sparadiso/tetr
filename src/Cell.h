@@ -2,6 +2,7 @@
 #define CELL_H_
 
 #include "Globals.h"
+#include "Tetrahedron.h"
 
 class Cell
 {
@@ -10,12 +11,14 @@ class Cell
     Matrix h;
 
     // Constructor
-    Cell();
+    Cell(int n);
 
     // Methods
     Real GetVolume();
-    Vector PeriodicImage(Vector &v);
+    Vector PartialCoords(Vector v);
+    Vector PeriodicImage(Vector v);
     std::string ToString();
+    void WrapShape(Tetrahedron *t);
 };
 
 #endif

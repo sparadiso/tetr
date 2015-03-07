@@ -31,7 +31,7 @@ Vector Tetrahedron::GetCOM()
 bool Tetrahedron::Intersects(Tetrahedron *t2)
 {
     //TODO: Implement
-    if ((this->GetCOM() - t2->GetCOM()).norm() < .5)
+    if ((this->GetCOM() - t2->GetCOM()).norm() < 1)
         return true;
 
     return false;
@@ -91,10 +91,8 @@ std::string Tetrahedron::ToString()
 // ========================================================================================================
 // Translate - Translate the particle 
 // ========================================================================================================
-void Tetrahedron::Translate(Vector &v)
+void Tetrahedron::Translate(Vector v)
 {
     for(unsigned int i=0;i<this->vertices.size();i++)
         this->vertices[i] += v;
 }
-// Quick handler for pointers
-void Tetrahedron::Translate(Vector *v){this->Translate(*v);}

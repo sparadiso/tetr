@@ -17,8 +17,7 @@ class Tetrahedron
     Matrix Rotate(float roll, float pitch, float yaw);
     void Rotate(Matrix rot_matrix);
     std::string ToString();
-    void Translate(Vector *v);
-    void Translate(Vector &v);
+    void Translate(Vector v);
 };
 
 #endif
