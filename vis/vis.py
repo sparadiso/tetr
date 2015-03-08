@@ -55,7 +55,7 @@ class Tetrahedron(object):
 
         if len(pts) > 0:
             self.points = []
-            for i in range(4):
+            for i in range(len(pts)/3):
                 self.points.append( [ pts[3*i+j] for j in range(3) ] )
 
         self.points = np.array(self.points, float)
@@ -67,13 +67,13 @@ class Tetrahedron(object):
     def paint(self, alpha=0.75, origin=[0,0,0], colormap='gray'):
         origin = np.array(origin)
 
-        self.hull = ConvexHull(self.points)
-
-        x = self.hull.points[:, 0] + origin[0]
-        y = self.hull.points[:, 1] + origin[1]
-        z = self.hull.points[:, 2] + origin[2]
-
         if len(self.points) == 1:
-            mlab.points3d(*np.transpose(self.points))
+            mlab.points3d(*np.transpose(self.points), scale_factor=0.7, colormap=colormap, opacity=alpha)
         else:
+            self.hull = ConvexHull(self.points)
+
+            x = self.hull.points[:, 0] + origin[0]
+            y = self.hull.points[:, 1] + origin[1]
+            z = self.hull.points[:, 2] + origin[2]
+
             mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap=colormap, opacity=alpha)

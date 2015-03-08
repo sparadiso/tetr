@@ -13,10 +13,13 @@ class Move
     public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW
     Real delta_max;
+    int accepted_moves, total_moves;
 
     Move(Real delta_max);
-    virtual void Apply() = 0;
-    virtual void Undo() = 0;
+    virtual void Apply() {accepted_moves++;total_moves++;}
+    virtual void Undo() {accepted_moves--;}
+    Real GetRatio(){return 1.*accepted_moves / total_moves;}
+    void Reset(){accepted_moves = 0; total_moves = 0;}
     virtual ~Move();
 };
 
@@ -69,6 +72,18 @@ class CellShapeMove: public CellMove
     Matrix h_old;
 
     CellShapeMove(Cell *c, Real delta_max);
+    void Apply();
+    void Undo();
+};
+
+class CellVolumeMove: public CellMove
+{
+    public:
+        
+    // Last move info for Undo()
+    Real scale;
+
+    CellVolumeMove(Cell *c, Real delta_max);
     void Apply();
     void Undo();
 };

@@ -14,6 +14,10 @@ Shape::~Shape()
 {
 }
 
+// ========================================================================================================
+// Rotate - Rotate the particle in place (intrinsic) by translating to origin, applying rotation matrices
+//          then translating back
+// ========================================================================================================
 void Shape::Rotate(Matrix rot_matrix)
 {
     Vector com = -1.0 * this->GetCOM();
@@ -28,11 +32,12 @@ void Shape::Rotate(Matrix rot_matrix)
     this->Translate(com);
 }
 
-// ========================================================================================================
-// Rotate - Rotate the particle in place (intrinsic) by translating to origin, applying rotation matrices
-//          then translating back
-// ========================================================================================================
-Matrix Shape::Rotate(float roll, float pitch, float yaw)
+void Shape::Rotate(float roll, float pitch, float yaw)
+{
+    this->Rotate(Shape::GetRotationMatrix(roll, pitch, yaw));
+}
+
+Matrix Shape::GetRotationMatrix(float roll, float pitch, float yaw)
 {
     // Compute rotation matrix
     // *Note*: this bit was pulled verbatim from (http://stackoverflow.com/questions/21412169/creating-a-rotation-matrix-with-pitch-yaw-roll-using-eigen)
@@ -42,10 +47,9 @@ Matrix Shape::Rotate(float roll, float pitch, float yaw)
 
     Eigen::Quaternion<double> q = rollAngle * yawAngle * pitchAngle;
 
-    this->Rotate(q.matrix());
-
     return q.matrix();
 }
+
 
 // ========================================================================================================
 // ToString - Return a formatted string of this particle's coordinates (v1x, v1y, v1z, v2x, v2y, ... )
