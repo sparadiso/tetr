@@ -5,20 +5,27 @@
 #include "Shape.h"
 #include "Moves.h"
 
+std::ofstream f0("dV_0"), f1("dV_1");
+int pp_counter = 0;
+int pg_counter = 0;
+
 template <class ShapeType>
 class MCDriver
 {
     public:
 
+    //DEBUG
+
     Cell cell;
     std::vector<ShapeType*> particles;
 
-    // List of Moves we'll use (particle vs cell)
+    // List of Moves we'll use (separated for convenience since we do cell moves with a different frequency)
     std::vector<ParticleMove*> particle_moves;
     std::vector<CellMove*> cell_moves;
 
     // Thermo parameters
     Real BetaP, Beta;
+    Real Project_Threshold;
 
     // Move parameters
     Real p_cell_move; // Probability of choosing a cell move (shape or volume) vs single particle move
@@ -43,7 +50,7 @@ class MCDriver
 template <class ShapeType>
 MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
                 Real dr, Real dtheta_particle,  // Particle Move Parameters
-                Real dtheta_cell) : cell(n_particles)      // Cell Move Parameters
+                Real dtheta_cell): cell(n_particles)
 {
     this->p_cell_move = p_cell_move;
 
@@ -83,6 +90,10 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         // Populate the particle moves
         this->particle_moves.push_back(new ParticleRotation(t, dtheta_particle));
     }
+
+    // Create the cell and give it references to the particles
+    for(int i=0;i<n_particles;i++)
+        cell.particles.push_back(particles[i]);
 }
 
 // Destructor
@@ -111,12 +122,14 @@ void MCDriver<ShapeType>::SetParticleTranslationDelta(Real delta)
 template <class ShapeType>
 void MCDriver<ShapeType>::SetCellShapeDelta(Real delta)
 {
-    this->cell_moves[0]->delta_max = delta;
+    if(this->cell_moves.size() > 0)
+        this->cell_moves[0]->delta_max = delta;
 }
 template <class ShapeType>
 void MCDriver<ShapeType>::SetCellVolumeDelta(Real delta)
 {
-    this->cell_moves[1]->delta_max = delta;
+    if(this->cell_moves.size() > 1)
+        this->cell_moves[1]->delta_max = delta;
 }
 
 template <class ShapeType>
@@ -126,6 +139,14 @@ void MCDriver<ShapeType>::__FreeGhosts(std::vector<ShapeType*> ghosts)
         delete ghosts[j];
 }
 
+/*
+template <class ShapeType>
+ShapeType MCDriver<ShapeType>::MinimumDistanceImage(ShapeType *t, ShapeType, *t2)
+{
+    // Given a shape `t`, find the image that is closest to t2
+}
+*/
+
 // Returns TRUE if collisions ARE detected
 template <class ShapeType>
 bool MCDriver<ShapeType>::CheckCollisionsWith(ShapeType *t, std::vector<ShapeType*> ghosts)
@@ -133,9 +154,13 @@ bool MCDriver<ShapeType>::CheckCollisionsWith(ShapeType *t, std::vector<ShapeTyp
 
     // First, check collisions with other particles
     for(uint i=0;i<particles.size();i++)
-        if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > 1E-5 )
+        if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > .0001 )
         {
-//            std::cout << "Collided with other particle" << std::endl;
+//            std::cout << "Collided with other particle: " ;//<< std::endl;
+            std::ofstream f;
+            f.open(std::string("ParticleParticle")+std::to_string(pp_counter++));
+            f << this->ToString(true);
+            f.close();
             return true;
         }
 
@@ -143,7 +168,11 @@ bool MCDriver<ShapeType>::CheckCollisionsWith(ShapeType *t, std::vector<ShapeTyp
     for(uint i=0;i<ghosts.size();i++)
         if (t->Intersects(ghosts[i]))
         {
-//            std::cout << "Collided with image particle" << std::endl;
+//            std::cout << "Collided with image particle: " ;//<< std::endl;
+            std::ofstream f;
+            f.open(std::string("ParticleGhost")+std::to_string(pg_counter++));
+            f << this->ToString(true);
+            f.close();
             return true;
         }
 
@@ -161,6 +190,8 @@ void MCDriver<ShapeType>::MakeMove()
     // First, choose the move to make
     if (u(0, 1) < this->p_cell_move)
     {
+        //std::cout << "Trying cell move" << std::endl;
+
         // Make a CellMove (shape or volume change)
         int move_index = u(0,1) * this->cell_moves.size();
         CellMove *move = this->cell_moves[move_index];
@@ -170,9 +201,26 @@ void MCDriver<ShapeType>::MakeMove()
         Real V_Before = this->cell.GetVolume();
         move->Apply();
         Real V_After = this->cell.GetVolume();
+        //std::cout << "Attempting DV="<<(V_After-V_Before) << std::endl;
+    
+        /*
+            // Print out the dV for this move
+            if(move_index==0)
+                f0 << V_After - V_Before << std::endl;
+            else
+                f1 << V_After - V_Before << std::endl;
+            f0.flush();
+            f1.flush();
+        */
+
+        // Enforce a minimum cell vector length
+        for(int i=0;i<3;i++)
+            if (this->cell.h.col(i).norm() < .5)
+                accepted = false;
+        
 
         // Check the interior angles
-        Real Projection_Threshold = 0.0;
+//        Real Project_Threshold = 0.2;
         Vector e0(this->cell.h.col(0)); e0 /= e0.norm();
         Vector e1(this->cell.h.col(1)); e1 /= e1.norm();
         Vector e2(this->cell.h.col(2)); e2 /= e2.norm();
@@ -180,14 +228,23 @@ void MCDriver<ShapeType>::MakeMove()
         Real overlap_0 = std::abs(e0.dot(e1));
         Real overlap_1 = std::abs(e0.dot(e2));
         Real overlap_2 = std::abs(e1.dot(e2));
+    
+        // The last case is a flat parallelpiped (after strong shear)
+        // Avoid this by checking the overlap of the unit normal of each plane and the last basis vector
+        Vector u_plane;
+        u_plane = e0.cross(e1); u_plane /= u_plane.norm(); if(std::abs(e2.dot(u_plane)) < 1-Project_Threshold) accepted = false;
+        u_plane = e0.cross(e2); u_plane /= u_plane.norm(); if(std::abs(e1.dot(u_plane)) < 1-Project_Threshold) accepted = false;
+        u_plane = e1.cross(e2); u_plane /= u_plane.norm(); if(std::abs(e0.dot(u_plane)) < 1-Project_Threshold) accepted = false;
 
-        if(true && (overlap_0 > Projection_Threshold || 
-            overlap_1 > Projection_Threshold ||
-            overlap_2 > Projection_Threshold))
+        if( 
+            (overlap_0 > Project_Threshold) || 
+            (overlap_1 > Project_Threshold) || 
+            (overlap_2 > Project_Threshold)
+          )
+        {
             accepted = false;
-
-        for(uint i=0;i<this->particles.size();i++)          
-            this->cell.WrapShape(this->particles[i]);
+            //std::cout << "Rejected on overlap: " << overlap_0 << ", " << overlap_1 << ", " << overlap_2 << ", " << 1-overlap_3 << std::endl;
+        }
 
         // Compute ghost images if this is a volume move
         std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
@@ -200,15 +257,29 @@ void MCDriver<ShapeType>::MakeMove()
                 accepted = !(this->CheckCollisionsWith(this->particles[i], ghosts));
 
                 if(!accepted)
+                {   
+                    //std::cout << "Failed for collision" << std::endl;
+                    /*
+                        std::ofstream f;
+                        f.open("Collision");
+                        f << this->ToString(true);
+                        f.close();
+                        exit(0);
+                    */
                     break;
+                }
             }
         
         // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor
         if(accepted)
         {
+            //std::cout << "Checking boltzmann P="<<this->BetaP<< ", factor=" << exp(-this->BetaP*(V_After-V_Before)) << std::endl;
             if (u(0,1) < exp(-this->BetaP*(V_After-V_Before)))
             {
                 accepted = true;
+
+                for(uint i=0;i<this->particles.size();i++)          
+                    this->cell.WrapShape(this->particles[i]);
             }
             else
                 accepted = false;
@@ -222,13 +293,14 @@ void MCDriver<ShapeType>::MakeMove()
     }
     else
     {
+        //std::cout << "Trying particle move" << std::endl;
+
         // randomly select a particle move
         int move_index = rand() % this->particle_moves.size();
         ParticleMove *move = this->particle_moves[move_index];
         AttemptedMove = move;
 
         ShapeType *t = reinterpret_cast<ShapeType*>(move->particle);
-        this->cell.WrapShape(t);
 
         Vector s_old = this->cell.PartialCoords(t->GetCOM());
         //std::cout << s_old << std::endl;
@@ -251,7 +323,10 @@ void MCDriver<ShapeType>::MakeMove()
 
             Real p = exp(-this->Beta*(E_New-E_Old));
             if (u(0,1) < p)
+            {
                 accepted = true;
+                this->cell.WrapShape(t);
+            }
             else
                 accepted = false;
 
@@ -263,8 +338,12 @@ void MCDriver<ShapeType>::MakeMove()
 
     if(!accepted)
     {
-//        std::cout << "Not accepted.." << accepted << std::endl;
+        //std::cout << "Not accepted.." << accepted << std::endl;
         AttemptedMove->Undo();
+    }
+    else
+    {
+        //std::cout << "Accepted.." << accepted << std::endl;
     }
 }
 
@@ -317,7 +396,7 @@ std::vector<ShapeType*> MCDriver<ShapeType>::GetPeriodicGhosts()
     for(uint i=0;i<particles.size();i++)
     {
         ShapeType *t = particles[i];
-        Vector s_com = this->cell.PartialCoords(t->GetCOM());
+        //Vector s_com = this->cell.PartialCoords(t->GetCOM());
 
         for(int j=0;j<26;j++)
         {
@@ -326,15 +405,15 @@ std::vector<ShapeType*> MCDriver<ShapeType>::GetPeriodicGhosts()
 //            std::cout << "r = " << v << std::endl;
 //            std::cout << "r from s = " << r_from_s << std::endl;
 
-            Vector s_new = s_com + all_translations.row(j).transpose();
+            //Vector s_new = s_com + all_translations.row(j).transpose();
 
             //if((com-r_from_s).norm() < 1. || true)
             if(true)
             {
                 ShapeType *ghost = new ShapeType(*t);
-                ghost->Translate(-ghost->GetCOM());
-                ghost->Translate(this->cell.h * s_new);
-                //ghost->Translate(displacement_vectors.row(j));
+//                ghost->Translate(-ghost->GetCOM());
+//                ghost->Translate(this->cell.h * s_new);
+                ghost->Translate(displacement_vectors.row(j));
                 ghosts.push_back(ghost);
             }
         }

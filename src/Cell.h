@@ -9,6 +9,7 @@ class Cell
     public:
     // Cell tensor
     Matrix h;
+    std::vector<Shape*> particles;
 
     // Constructor
     Cell(int n);

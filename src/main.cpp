@@ -18,7 +18,7 @@ void RunProduction();
 void RunDebug();
 
 template <class T>
-void PrintOutput(MCDriver<T> &d);
+void PrintOutput(string str, MCDriver<T> &d);
 
 // Output
 int output_count = 0;
@@ -57,7 +57,7 @@ int main(int argc, char* argv[])
     }
 
     // Options
-    int n_particles = GetParameter("n_particles", 1);
+    int n_particles = GetParameter("n_particles", 2);
     Real p_cell_move = GetParameter("p_cell_move", 1.0/(n_particles+1));
     //Real cell_shape_delta = 0.05;
         
@@ -72,33 +72,68 @@ int main(int argc, char* argv[])
         d->SetCellShapeDelta(GetParameter("dcell", 0.1));
         d->SetCellVolumeDelta(GetParameter("dv", 0.1));
         d->SetParticleTranslationDelta(GetParameter("dr", 0.1));
+        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.1);
         
         drivers.push_back(d);
     }
 
     // Run the simulation
-    RunProduction();
-//    RunDebug();
+    if(GetParameter("Debug", 0) < .9)
+        RunProduction();
+    else
+        RunDebug();
 
     return 0;
 }
 
 void RunDebug()
 {
-    ChosenShape *particle = drivers[0]->particles[0];
+    //ChosenShape *particle = drivers[0]->particles[0];
     MCDriver<ChosenShape> *driver = drivers[0];
     Cell *cell = &(driver->cell);
+    vector< ChosenShape* > ghosts;
 
     driver->p_cell_move = 1.0;
 
     cell->h.setIdentity();
+    cell->h *= 2;
+        
+    // Set the particles in a convenient way
+//    ChosenShape *p0, *p1;
 
-    for(int i=0;i<100;i++)
+    for(uint i=0;i<driver->particles.size();i++)
+        driver->particles[i]->Translate(-driver->particles[i]->GetCOM());
+
+    bool collided;
+    int total = GetParameter("DebugSteps", 200);
+    for(int i=0;i<total;i++)
     {
-        driver->cell_moves[1]->Apply();
-        cell->WrapShape(particle);
-        cout << cell->GetVolume() << endl;
+        driver->MakeMove();
+
+/*
+        ghosts = driver->GetPeriodicGhosts();
+        collided = false;
+        for(int j=0;j<2;j++)
+            if (driver->CheckCollisionsWith(driver->particles[j], ghosts))
+            {
+                collided = true;
+                cout << i<<": Collided with p"<<j<< endl;
+                break;
+            }
+
         PrintOutput(*driver);
+
+        if (collided)
+            driver->cell_moves[1]->Undo();
+
+        MCDriver<ChosenShape>::__FreeGhosts(ghosts);
+
+        cell->WrapShape(driver->particles[0]);
+        cell->WrapShape(driver->particles[1]);
+*/
+        cout << "Packing Fraction: " << driver->GetPackingFraction() << endl;
+        if(i%(total/10)==0)
+            PrintOutput("dbg",*driver);
     }
 }
 
@@ -139,7 +174,10 @@ void RunProduction()
             cout << endl;
             cout << "Best Solution: " << BestSolution << endl;
             cout << endl;
-
+    
+            for(uint j=0;j<drivers.size();j++)
+                PrintOutput(string("Driver_")+to_string(j)+string("_"), *drivers[j]);
+            
             for(uint j=0;j<drivers.size();j++)
             {
                 cout << "System " << j << " (P=" << drivers[j]->BetaP << ")" << endl;
@@ -148,8 +186,11 @@ void RunProduction()
                 cout << "Pack Fraction: " << drivers[j]->GetPackingFraction() << endl;
                 
                 // Take this opportunity to update the step sizes
-                cout << "Cell Accept Ratio: " << drivers[j]->cell_moves[0]->GetRatio() << ", " << drivers[j]->cell_moves[1]->GetRatio() << endl;
-                if(abs(GetParameter("UpdateMoveSizeYN", 0) - 1) < .0001)
+                cout << "Cell Accept Ratio: ";
+                for(uint k=0;k<drivers[j]->cell_moves.size();k++)
+                    cout << drivers[j]->cell_moves[k]->GetRatio() << ", ";
+                cout << endl;
+                if(GetParameter("UpdateMoveSizeYN", 0) < .99)
                     drivers[j]->UpdateMoveSizes(0.1);
 
                 cout << endl;
@@ -172,7 +213,7 @@ void RunProduction()
                 // Only print it to a file if we've improved by at least 2%
                 if(pack_fraction - BestSolutionPrinted > 0.05)
                 {
-                    PrintOutput(*drivers[j]);
+                    PrintOutput("best", *drivers[j]);
                     BestSolutionPrinted = pack_fraction;
                 }   
                 BestSolution = pack_fraction;
@@ -181,19 +222,21 @@ void RunProduction()
     }
 
     cout << "FINISHED - Best Solution: " << BestSolution << endl;
-    PrintOutput(*drivers[0]);
+    PrintOutput("best", *drivers[0]);
 }
 
 template <class T>
-void PrintOutput(MCDriver<T> &driver)
+void PrintOutput(string str, MCDriver<T> &driver)
 {
     char buff[100];
-    sprintf(buff, "%04d", output_count++);
-    string fname = string("out_") + string(buff);
+    sprintf(buff, "%04d", output_count);
+    output_count++;
+    string fname = str + string(buff);
+    cout << "PRINTING " << fname << endl;
 
     ofstream f;
     f.open(fname);
-    f << driver.ToString(false);
+    f << driver.ToString(true);
     f.close();
 }
 

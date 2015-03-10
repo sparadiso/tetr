@@ -28,30 +28,28 @@ class ParticleMove: public Move
 {
     public:
     Shape *particle;
+    std::vector<Vector> vertices_old;
 
     ParticleMove(Shape *t, Real delta_max);
 
     virtual ~ParticleMove();
+    void Undo();
 };
 
 class ParticleTranslation: public ParticleMove
 {
     public:
-    Vector *dr;
 
     ParticleTranslation(Shape *t, Real delta_max);
     void Apply();
-    void Undo();
 };
 
 class ParticleRotation: public ParticleMove
 {
     public:
-    Matrix rot_inverse;
 
     ParticleRotation(Shape *t, Real delta_max);
     void Apply();
-    void Undo();
 };
 
 // Cell moves
@@ -59,32 +57,26 @@ class CellMove: public Move
 {
     public:
     Cell *cell;
+    Matrix cell_update;
 
     CellMove(Cell *c, Real delta_max);
     virtual ~CellMove();
+    void Undo();
 };
 
 class CellShapeMove: public CellMove
 {
     public:
-        
-    // Last move info for Undo()
-    Matrix h_old;
 
     CellShapeMove(Cell *c, Real delta_max);
     void Apply();
-    void Undo();
 };
 
 class CellVolumeMove: public CellMove
 {
     public:
         
-    // Last move info for Undo()
-    Real scale;
-
     CellVolumeMove(Cell *c, Real delta_max);
     void Apply();
-    void Undo();
 };
 
