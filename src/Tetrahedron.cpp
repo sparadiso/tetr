@@ -26,7 +26,7 @@ Real Tetrahedron::GetVolume()
 bool Tetrahedron::Intersects(Shape *t2)
 {
     //TODO: Implement
-    if (sqrt((this->GetCOM() - t2->GetCOM()).norm()) < 1)
+    if (sqrt((this->GetCOM() - s2->GetCOM()).norm()) < 1)
         return true;
 
     return false;
