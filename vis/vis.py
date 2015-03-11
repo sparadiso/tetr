@@ -68,7 +68,7 @@ class Tetrahedron(object):
         origin = np.array(origin)
 
         if len(self.points) == 1:
-            mlab.points3d(*np.transpose(self.points), colormap=colormap, opacity=alpha)
+            mlab.points3d(*np.transpose(self.points), colormap=colormap, opacity=alpha, resolution=16)
         else:
             self.hull = ConvexHull(self.points)
 

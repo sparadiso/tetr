@@ -5,7 +5,7 @@
 #include "Shape.h"
 #include "Moves.h"
 
-std::ofstream f0("dV_0"), f1("dV_1");
+std::ofstream f0("output/dV_0"), f1("output/dV_1");
 int pp_counter = 0;
 int pg_counter = 0;
 
@@ -36,10 +36,10 @@ class MCDriver
 
     static void __FreeGhosts(std::vector<ShapeType*> ghosts);
 
-    bool CheckCollisionsWith(ShapeType *t, std::vector<ShapeType*> ghosts);
+    bool CollisionDetectedWith(ShapeType *t, std::vector<ShapeType*> ghosts);
     Real GetPackingFraction();
     std::vector<ShapeType*> GetPeriodicGhosts();
-    void MakeMove();
+    bool MakeMove();
     void SetCellShapeDelta(Real delta);
     void SetCellVolumeDelta(Real delta);
     void SetParticleTranslationDelta(Real delta);
@@ -56,7 +56,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
 
     // Populate the cell moves
     this->cell_moves.push_back(new CellShapeMove(&this->cell, dtheta_cell));
-    this->cell_moves.push_back(new CellVolumeMove(&this->cell, dtheta_cell));
+//    this->cell_moves.push_back(new CellVolumeMove(&this->cell, dtheta_cell));
 
     // Initialize the particles in valid (non-overlapping) positions
     for(int i=0;i<n_particles;i++)
@@ -79,7 +79,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
 
         // Keep applying particle translations until a valid position is found
         std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
-        while( this->CheckCollisionsWith(t, ghosts) )
+        while( this->CollisionDetectedWith(t, ghosts) )
         {
             this->particle_moves.back()->Apply();
 
@@ -149,18 +149,20 @@ ShapeType MCDriver<ShapeType>::MinimumDistanceImage(ShapeType *t, ShapeType, *t2
 
 // Returns TRUE if collisions ARE detected
 template <class ShapeType>
-bool MCDriver<ShapeType>::CheckCollisionsWith(ShapeType *t, std::vector<ShapeType*> ghosts)
+bool MCDriver<ShapeType>::CollisionDetectedWith(ShapeType *t, std::vector<ShapeType*> ghosts)
 {
 
     // First, check collisions with other particles
     for(uint i=0;i<particles.size();i++)
-        if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > .0001 )
+        if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > .00001 )
         {
 //            std::cout << "Collided with other particle: " ;//<< std::endl;
+/*
             std::ofstream f;
             f.open(std::string("ParticleParticle")+std::to_string(pp_counter++));
             f << this->ToString(true);
             f.close();
+*/
             return true;
         }
 
@@ -169,10 +171,12 @@ bool MCDriver<ShapeType>::CheckCollisionsWith(ShapeType *t, std::vector<ShapeTyp
         if (t->Intersects(ghosts[i]))
         {
 //            std::cout << "Collided with image particle: " ;//<< std::endl;
+/*
             std::ofstream f;
             f.open(std::string("ParticleGhost")+std::to_string(pg_counter++));
             f << this->ToString(true);
             f.close();
+*/
             return true;
         }
 
@@ -180,7 +184,7 @@ bool MCDriver<ShapeType>::CheckCollisionsWith(ShapeType *t, std::vector<ShapeTyp
 }
 
 template <class ShapeType>
-void MCDriver<ShapeType>::MakeMove()
+bool MCDriver<ShapeType>::MakeMove()
 {
     // Assume the move is good until proven otherwise
     bool accepted = true;
@@ -203,15 +207,13 @@ void MCDriver<ShapeType>::MakeMove()
         Real V_After = this->cell.GetVolume();
         //std::cout << "Attempting DV="<<(V_After-V_Before) << std::endl;
     
-        /*
-            // Print out the dV for this move
-            if(move_index==0)
-                f0 << V_After - V_Before << std::endl;
-            else
-                f1 << V_After - V_Before << std::endl;
-            f0.flush();
-            f1.flush();
-        */
+        // Print out the dV for this move
+        if(move_index==0)
+            f0 << V_After - V_Before << std::endl;
+        else
+            f1 << V_After - V_Before << std::endl;
+        f0.flush();
+        f1.flush();
 
         // Enforce a minimum cell vector length
         for(int i=0;i<3;i++)
@@ -253,8 +255,8 @@ void MCDriver<ShapeType>::MakeMove()
         if(accepted)
             for(uint i=0;i<this->particles.size();i++)
             {
-                // Check for collisions - CheckCollisionsWith returns true if collisions are detected
-                accepted = !(this->CheckCollisionsWith(this->particles[i], ghosts));
+                // Check for collisions - CollisionDetectedWith returns true if collisions are detected
+                accepted = !(this->CollisionDetectedWith(this->particles[i], ghosts));
 
                 if(!accepted)
                 {   
@@ -310,8 +312,8 @@ void MCDriver<ShapeType>::MakeMove()
         // Compute ghost images 
         std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
         
-        // Check for collisions - CheckCollisionsWith returns true if collisions are detected
-        accepted = !(this->CheckCollisionsWith(t, ghosts));
+        // Check for collisions - CollisionDetectedWith returns true if collisions are detected
+        accepted = !(this->CollisionDetectedWith(t, ghosts));
 
         // If no collisions, check on internal energy due to the potential
         if(accepted)
@@ -345,6 +347,8 @@ void MCDriver<ShapeType>::MakeMove()
     {
         //std::cout << "Accepted.." << accepted << std::endl;
     }
+
+    return accepted;
 }
 
 template <class ShapeType>
@@ -357,117 +361,28 @@ Real MCDriver<ShapeType>::GetPackingFraction()
 template <class ShapeType>
 std::vector<ShapeType*> MCDriver<ShapeType>::GetPeriodicGhosts()
 {
-    Eigen::MatrixXd all_translations(26, 3);
-    // All 26 (symmetric) displacements on a regular grid: count to 27 in base 2 and ignore (0,0,0) then subtract 1. 
-    all_translations <<  0, 0, 0,
-                        0, 0, 1,
-                        0, 0, 2,
-                        0, 1, 0,
-                        0, 1, 1,
-                        0, 1, 2,
-                        0, 2, 0,
-                        0, 2, 1,
-                        0, 2, 2,
-                        1, 0, 0,
-                        1, 0, 1,
-                        1, 0, 2,
-                        1, 1, 0,
-                        1, 1, 2,
-                        1, 2, 0,
-                        1, 2, 1,
-                        1, 2, 2,
-                        2, 0, 0,
-                        2, 0, 1,
-                        2, 0, 2,
-                        2, 1, 0,
-                        2, 1, 1,
-                        2, 1, 2,
-                        2, 2, 0,
-                        2, 2, 1,
-                        2, 2, 2;
-
-    all_translations.array() -= 1.;
-
-    // In R^3
-    Eigen::MatrixXd displacement_vectors = all_translations * this->cell.h;
-
     std::vector<ShapeType*> ghosts;
 
+    // dr = h * (s_i - s_j + Indices) where Indices = [{-1,0,1}, ... ]
     for(uint i=0;i<particles.size();i++)
     {
         ShapeType *t = particles[i];
-        //Vector s_com = this->cell.PartialCoords(t->GetCOM());
 
-        for(int j=0;j<26;j++)
+        // [j, k, l] define a periodic image to check - this only checks the first shell.
+        for(int j=-1;j<2;j++) 
+        for(int k=-1;k<2;k++) 
+        for(int l=-1;l<2;l++)
         {
-//            Vector v(displacement_vectors.row(j));
-//            Vector r_from_s(this->cell.h * all_translations.row(j).transpose());
-//            std::cout << "r = " << v << std::endl;
-//            std::cout << "r from s = " << r_from_s << std::endl;
-
-            //Vector s_new = s_com + all_translations.row(j).transpose();
-
-            //if((com-r_from_s).norm() < 1. || true)
-            if(true)
+            if(!(j==0&&k==0&&l==0))
             {
+                Vector index(j,k,l);
+
                 ShapeType *ghost = new ShapeType(*t);
-//                ghost->Translate(-ghost->GetCOM());
-//                ghost->Translate(this->cell.h * s_new);
-                ghost->Translate(displacement_vectors.row(j));
+                ghost->Translate(this->cell.h * index);
                 ghosts.push_back(ghost);
             }
         }
-
-        /*
-        std::vector<Vector> displacements;
-
-        for(uint j=0;j<t->vertices.size();j++)
-        {
-            Vector v = this->cell.PeriodicImage(t->vertices[j]);            
-            Vector dv = v - t->vertices[j];
-
-            bool repeat = false;
-
-            if ( dv.norm() < 1E-5)
-                repeat = true;
-
-            // Check to see if this displacement exists already 
-            for(uint k=0;k<displacements.size();k++)
-            {
-                if(repeat)
-                    break;
-
-                dv = v - displacements[k];
-
-//                std::cout << "v: \n"<<v << std::endl;
-//                std::cout << "dis: \n"<< dv << std::endl;
-//                std::cout << "norm: \n"<< dv.norm() << std::endl;
-
-                if(dv.norm() < 1E-5)
-                {
-                    repeat = true;
-                }
-            }
-            if (!repeat)
-            {  
-                displacements.push_back(v - t->vertices[j]);
-            }
-        }
-
-        // FOR EACH DISPLACEMENT, CREATE A GHOST BY COPYING/TRANSLATING `t` AND ADD IT TO THE LIST
-        for(uint j=0;j<displacements.size();j++)
-        {
-            ShapeType *ghost = new ShapeType(*t);
-//            std::cout << "Ghost Before: " << ghost->ToString() << std::endl;
-            ghost->Translate(displacements[j]);
-//            std::cout << "Ghost After: " << ghost->ToString() << std::endl;
-            ghosts.push_back(ghost);
-        }
-        */
     }
-
-//    for(uint i=0;i<ghosts.size();i++)
-//        std::cout << "Ghosts Returned: " << ghosts[i]->ToString() << std::endl;
 
     return ghosts;
 }

@@ -1,22 +1,6 @@
 from vis import *
 import glob
 
-def MinimumDistanceImage(p1, p2, cell):
-    #Find the image that minimizes the distance in each dimension
-    for i in range(3):
-        dmin = min(min(p1 + cell[i], p1
-    cell = [-.5, .5]
-    c = -.6; c + 1 = .4
-    c = -1.6; c + .5; c - (int(c)) = -.6 + 1 = .4
-    c = 1.6; c - (int(c)) = .6 - 1 = -.4
-    
-    # apply pbcs to p1 to check collisions with p2
-    dx = []
-    for i in range(3):
-        dx.append(min((p1[i]-p2[i])**2, (p1[i]+1
-        
-    min(p1 + 
-    
 def ParseCell(fname):
     # Return cell tensor and particle positions
     with open(fname) as f:
@@ -53,7 +37,7 @@ def ViewFile(fname, show=True, PaintGhosts=True):
         e1 = np.array(f.readline().split(), float)
         e2 = np.array(f.readline().split(), float)
 
-        reset()
+        #reset()
 
         cell = Cell(e0, e1, e2)
         cell.paint()
@@ -70,7 +54,7 @@ def ViewFile(fname, show=True, PaintGhosts=True):
                     t.paint(0.1, colormap='spectral')
             else:
 #                [t.paint(0.25, origin=e, colormap='autumn') for e in tr]
-                t.paint(0.90, colormap='gray')
+                t.paint(1.0, colormap='gray')
 
         if show:
             mlab.show()

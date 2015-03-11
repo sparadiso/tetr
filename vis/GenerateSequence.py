@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import test
+import sys
 
-test.CreateImagesFromFiles("Driver", PaintGhosts=False)
+test.CreateImagesFromFiles("output/{}".format(sys.argv[1]), PaintGhosts=False)
 

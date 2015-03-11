@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
         d->SetCellShapeDelta(GetParameter("dcell", 0.1));
         d->SetCellVolumeDelta(GetParameter("dv", 0.1));
         d->SetParticleTranslationDelta(GetParameter("dr", 0.1));
-        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.1);
+        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.3);
         
         drivers.push_back(d);
     }
@@ -86,61 +86,68 @@ int main(int argc, char* argv[])
     return 0;
 }
 
-void RunDebug()
+// Make each move and undo it to make sure the moves are doing what they ought to
+void ParticleMoveTest(MCDriver<ChosenShape> *driver)
 {
-    //ChosenShape *particle = drivers[0]->particles[0];
-    MCDriver<ChosenShape> *driver = drivers[0];
-    Cell *cell = &(driver->cell);
-    vector< ChosenShape* > ghosts;
+    driver->p_cell_move = 0.0;
 
-    driver->p_cell_move = 1.0;
-
+    Cell *cell = &driver->cell;
     cell->h.setIdentity();
-    cell->h *= 2;
-        
-    // Set the particles in a convenient way
-//    ChosenShape *p0, *p1;
+    cell->h *= sqrt(driver->particles.size());
 
-    for(uint i=0;i<driver->particles.size();i++)
-        driver->particles[i]->Translate(-driver->particles[i]->GetCOM());
-
-    bool collided;
-    int total = GetParameter("DebugSteps", 200);
+    int total = GetParameter("DebugSteps", 2000);
     for(int i=0;i<total;i++)
     {
-        driver->MakeMove();
+        for(uint j=0;j<driver->particle_moves.size();j+=2)
+        {
+            Move *m = driver->particle_moves[j];
 
-/*
-        ghosts = driver->GetPeriodicGhosts();
-        collided = false;
-        for(int j=0;j<2;j++)
-            if (driver->CheckCollisionsWith(driver->particles[j], ghosts))
-            {
-                collided = true;
-                cout << i<<": Collided with p"<<j<< endl;
-                break;
-            }
+            m->Apply();
 
-        PrintOutput(*driver);
+            vector<ChosenShape*> ghosts = driver->GetPeriodicGhosts();
+            if(driver->CollisionDetectedWith(driver->particles[j/2], ghosts))
+                m->Undo();
+            driver->__FreeGhosts(ghosts);
+        }
 
-        if (collided)
-            driver->cell_moves[1]->Undo();
-
-        MCDriver<ChosenShape>::__FreeGhosts(ghosts);
-
-        cell->WrapShape(driver->particles[0]);
-        cell->WrapShape(driver->particles[1]);
-*/
-        cout << "Packing Fraction: " << driver->GetPackingFraction() << endl;
-        if(i%(total/10)==0)
-            PrintOutput("dbg",*driver);
+        PrintOutput("dbg",*driver);
     }
+}
+
+// Make each move and undo it to make sure the moves are doing what they ought to
+void ApplyUndoTest(MCDriver<ChosenShape> *driver)
+{
+    for(uint i=0;i<driver->cell_moves.size();i++)
+    {   
+        Move *m = driver->cell_moves[i];
+        PrintOutput("CellMove", *driver);
+        m->Apply();
+        PrintOutput("CellMove", *driver);
+        m->Undo();
+        PrintOutput("CellMove", *driver);
+    }
+
+    for(uint i=0;i<driver->particle_moves.size();i++)
+    {   
+        Move *m = driver->cell_moves[i];
+        PrintOutput("ParticleMove", *driver);
+        m->Apply();
+        PrintOutput("ParticleMove", *driver);
+        m->Undo();
+        PrintOutput("ParticleMove", *driver);
+    }
+}
+
+void RunDebug()
+{
+    MCDriver<ChosenShape> *driver = drivers[0];
+    ParticleMoveTest(driver);
 }
 
 void RunProduction()
 {
     // Now run the MC Simulation
-    int total = GetParameter("N_Steps", 150000);
+    int total = GetParameter("n_steps", 150000);
     Real BestSolution = 0;
     Real BestSolutionPrinted = 0;
 
@@ -168,7 +175,7 @@ void RunProduction()
         }
 
         // Print out every few steps
-        if(i%(total/(int)GetParameter("N_Write", 25))==0)
+        if(i%(total/(int)GetParameter("n_write", 25))==0)
         {
             cout << "===== Step " << i << " Completed =====" << endl;
             cout << endl;
@@ -190,8 +197,8 @@ void RunProduction()
                 for(uint k=0;k<drivers[j]->cell_moves.size();k++)
                     cout << drivers[j]->cell_moves[k]->GetRatio() << ", ";
                 cout << endl;
-                if(GetParameter("UpdateMoveSizeYN", 0) < .99)
-                    drivers[j]->UpdateMoveSizes(0.1);
+                if(GetParameter("UpdateMoveSizeYN", 0) > .99)
+                    drivers[j]->UpdateMoveSizes(0.3);
 
                 cout << endl;
             }
@@ -231,8 +238,7 @@ void PrintOutput(string str, MCDriver<T> &driver)
     char buff[100];
     sprintf(buff, "%04d", output_count);
     output_count++;
-    string fname = str + string(buff);
-    cout << "PRINTING " << fname << endl;
+    string fname = "output/" + str + string(buff);
 
     ofstream f;
     f.open(fname);

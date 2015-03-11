@@ -57,7 +57,7 @@ class CellMove: public Move
 {
     public:
     Cell *cell;
-    Matrix cell_update;
+    Matrix h_old;
 
     CellMove(Cell *c, Real delta_max);
     virtual ~CellMove();

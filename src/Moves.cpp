@@ -4,7 +4,10 @@
 // Super Move constructor
 Move::Move(Real delta_max)
 {
+    accepted_moves = 0;
+    total_moves = 0;
     this->delta_max = delta_max;
+
 }
 Move::~Move(){}
 CellMove::~CellMove(){}
@@ -99,7 +102,8 @@ void CellShapeMove::Apply()
     e(1,2) = e(2,1);
 
     // Record the strain tensor so we can undo this move after
-    this->cell_update = Eigen::I(3) + e;
+    Matrix cell_update = Matrix::Identity() + e;
+    this->h_old = this->cell->h;
 
     // We move the particles along with the cell tensor to aid compression
     std::vector<Vector> s_com;
@@ -107,7 +111,7 @@ void CellShapeMove::Apply()
         s_com.push_back(this->cell->PartialCoords(this->cell->particles[i]->GetCOM()));
 
     // Apply the strain tensor to update the cell
-    this->cell->h *= this->cell_update;
+    this->cell->h *= cell_update;
 
     // Now apply the appropriate translations to each particle
     for(uint i=0;i<this->cell->particles.size();i++)   
@@ -129,7 +133,7 @@ void CellMove::Undo()
         s_com.push_back(this->cell->PartialCoords(this->cell->particles[i]->GetCOM()));
 
     // Apply the strain tensor to update the cell
-    this->cell->h = this->cell_update.inverse() * this->cell->h;
+    this->cell->h = this->h_old;
 
     // Now apply the appropriate translations to each particle
     for(uint i=0;i<this->cell->particles.size();i++)   
