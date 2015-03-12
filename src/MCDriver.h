@@ -5,14 +5,14 @@
 #include "Shape.h"
 #include "Moves.h"
 
-std::ofstream f0("output/dV_0"), f1("output/dV_1");
-int pp_counter = 0;
-int pg_counter = 0;
-
 template <class ShapeType>
 class MCDriver
 {
     public:
+
+    // ====================== Instance Variables ======================
+
+    // The main instance variables: fundamental cell and particle list
     Cell cell;
     std::vector<ShapeType*> particles;
 
@@ -20,19 +20,23 @@ class MCDriver
     std::vector<ParticleMove*> particle_moves;
     std::vector<CellMove*> cell_moves;
 
-    // Thermodynamic parameters (Pressure and Inverse temperature - the latter only effects the bias potential)
-    Real BetaP, Beta;
+    // Thermodynamic pressure
+    Real BetaP;
 
     // We restrict the minimum internal angles by projecting each basis (unit) vector on the others. 
-    // If u_i <dot> u_j > Project_Threshold for any pair i!=j after a cell move, we reject it 
+    // If u_i (dot) u_j > Project_Threshold for any pair i!=j after a cell move, we reject it 
     Real Project_Threshold;
 
     // Move parameters
-    Real p_cell_move; // Probability of choosing a cell move (shape or volume) vs single particle move
+    Real p_cell_move; // Probability of choosing a cell move vs single particle move
 
+    // ====================== Instance Methods ======================
+
+    // Constructor/Destructor
     MCDriver(int n_particles, Real p_cell_move = 0.1, Real dr_particle=0.1, Real dtheta_particle=0.2, Real dcell = 0.1);
     ~MCDriver();
 
+    // Instance methods
     bool CollisionDetectedWith(ShapeType *t);
     void UpdatePeriodicImages(ShapeType *shape);
     void InitializePeriodicImages(ShapeType *shape);
@@ -115,6 +119,7 @@ MCDriver<ShapeType>::~MCDriver()
         delete this->cell_moves[i];
 }
 
+// Setters for the move parameters
 template <class ShapeType>
 void MCDriver<ShapeType>::SetParticleTranslationDelta(Real delta)
 {
@@ -166,8 +171,6 @@ bool MCDriver<ShapeType>::MakeMove()
     // First, choose the move to make
     if (u(0, 1) < this->p_cell_move)
     {
-        //std::cout << "Trying cell move" << std::endl;
-
         // Make a CellMove (shape or volume change)
         int move_index = u(0,1) * this->cell_moves.size();
         CellMove *move = this->cell_moves[move_index];
@@ -177,24 +180,18 @@ bool MCDriver<ShapeType>::MakeMove()
         Real V_Before = this->cell.GetVolume();
         move->Apply();
         Real V_After = this->cell.GetVolume();
-        //std::cout << "Attempting DV="<<(V_After-V_Before) << std::endl;
     
-        // Print out the dV for this move
-        if(move_index==0)
-            f0 << V_After - V_Before << std::endl;
-        else
-            f1 << V_After - V_Before << std::endl;
-        f0.flush();
-        f1.flush();
-
         // Enforce a minimum cell vector length
         for(int i=0;i<3;i++)
             if (this->cell.h.col(i).norm() < .5)
                 accepted = false;
         
+        // ---------------------------------------------------------------------------------------------------------------------------------------------
+        // In rare cases, the MC trajectory can diverge after shearing the cell into a state where collisions occur beyond the first periodic shell (and 
+        // are therefore missed by the collision detection). A simple solution is to limit the allowed internal angles between basis vectors
+        // ---------------------------------------------------------------------------------------------------------------------------------------------
 
         // Check the interior angles
-//        Real Project_Threshold = 0.2;
         Vector e0(this->cell.h.col(0)); e0 /= e0.norm();
         Vector e1(this->cell.h.col(1)); e1 /= e1.norm();
         Vector e2(this->cell.h.col(2)); e2 /= e2.norm();
@@ -203,7 +200,7 @@ bool MCDriver<ShapeType>::MakeMove()
         Real overlap_1 = std::abs(e0.dot(e2));
         Real overlap_2 = std::abs(e1.dot(e2));
     
-        // The last case is a flat parallelpiped (after strong shear)
+        // The last case is a flat parallelpiped (strongly sheared)
         // Avoid this by checking the overlap of the unit normal of each plane and the last basis vector
         Vector u_plane;
         u_plane = e0.cross(e1); u_plane /= u_plane.norm(); if(std::abs(e2.dot(u_plane)) < 1-Project_Threshold) accepted = false;
@@ -236,10 +233,10 @@ bool MCDriver<ShapeType>::MakeMove()
             }
         }
         
-        // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor
+        // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor for a change in volume
+        // given the applied pressure
         if(accepted)
         {
-            //std::cout << "Checking boltzmann P="<<this->BetaP<< ", factor=" << exp(-this->BetaP*(V_After-V_Before)) << std::endl;
             if (u(0,1) < exp(-this->BetaP*(V_After-V_Before)))
             {
                 accepted = true;
@@ -275,23 +272,6 @@ bool MCDriver<ShapeType>::MakeMove()
 
         // Check for collisions - CollisionDetectedWith returns true if collisions are detected
         accepted = !(this->CollisionDetectedWith(t));
-
-        // If no collisions, check on internal energy due to the potential
-        if(accepted && this->Beta > 0)
-        {
-            // Parabolic potential 
-            Vector center(.5,.5,.5);
-            Real E_New = (s_new-center).norm();
-            Real E_Old = (s_old-center).norm();
-
-            Real p = exp(-this->Beta*(E_New-E_Old));
-            if (u(0,1) < p)
-            {
-                accepted = true;
-            }
-            else
-                accepted = false;
-        }
     
         if(accepted)
         {

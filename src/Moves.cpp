@@ -9,9 +9,8 @@ Move::Move(Real delta_max)
     this->delta_max = delta_max;
 
 }
+
 Move::~Move(){}
-CellMove::~CellMove(){}
-ParticleMove::~ParticleMove(){}
 
 // ParticleMove super class
 ParticleMove::ParticleMove(Shape *t, Real delta_max): Move(delta_max)
@@ -144,25 +143,3 @@ void CellMove::Undo()
     }
 }
 
-// CellShape class
-CellVolumeMove::CellVolumeMove(Cell *c, Real delta_max): CellMove(c, delta_max)
-{
-}
-void CellVolumeMove::Apply()
-{
-    Move::Apply();
-
-    // Choose a scale factor
-    Real dv = u(-this->delta_max, this->delta_max);
-
-    int b0 = u(0,3);
-    int b1 = (b0 + 1) % 3; Vector e1 = this->cell->h.col(b1);
-    int b2 = (b0 + 2) % 3; Vector e2 = this->cell->h.col(b2);
-        
-    Vector c = e1.cross(e2);
-    Real area = c.norm();
-    Vector dr = this->cell->h.col(b0); dr /= dr.norm(); dr *= dv/area;
-
-    // Add length to the vector so that area*dl = dv
-    this->cell->h.col(b0) += dr;
-}

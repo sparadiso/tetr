@@ -68,10 +68,9 @@ int main(int argc, char* argv[])
 
         // Set options
         d->BetaP = pressures[i];
-        d->Beta = GetParameter("potential", 0);
-        d->SetCellShapeDelta(GetParameter("dcell", 0.1));
-        d->SetParticleTranslationDelta(GetParameter("dr", 0.1));
-        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.3);
+        d->SetCellShapeDelta(GetParameter("dcell", 0.02));
+        d->SetParticleTranslationDelta(GetParameter("dr", 0.03));
+        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.6);
         
         drivers.push_back(d);
     }

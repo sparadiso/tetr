@@ -14,7 +14,7 @@ class Cell
     // Constructor
     Cell(int n);
 
-    // Methods
+    // Instance Methods
     Real GetVolume();
     Vector PartialCoords(Vector v);
     Vector PeriodicImage(Vector v);
