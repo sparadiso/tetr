@@ -9,10 +9,12 @@ class Shape
     // Member methods
     Vector GetCOM();
     static Matrix GetRotationMatrix(float roll, float pitch, float yaw);
-    void Rotate(float roll, float pitch, float yaw);
-    void Rotate(Matrix rot_matrix);
+
+    virtual void Rotate(float roll, float pitch, float yaw);
+    virtual void Rotate(Matrix rot_matrix);
+    virtual void Translate(Vector v);
+
     std::string ToString();
-    void Translate(Vector v);
 
     // Virtual destructor
     virtual ~Shape();

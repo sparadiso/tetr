@@ -82,7 +82,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         while( this->CollisionDetectedWith(t, ghosts) )
         {
             this->particle_moves.back()->Apply();
-
+            this->cell.WrapShape(t);
             __FreeGhosts(ghosts);
             ghosts = this->GetPeriodicGhosts();
         }
@@ -156,13 +156,6 @@ bool MCDriver<ShapeType>::CollisionDetectedWith(ShapeType *t, std::vector<ShapeT
     for(uint i=0;i<particles.size();i++)
         if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > .00001 )
         {
-//            std::cout << "Collided with other particle: " ;//<< std::endl;
-/*
-            std::ofstream f;
-            f.open(std::string("ParticleParticle")+std::to_string(pp_counter++));
-            f << this->ToString(true);
-            f.close();
-*/
             return true;
         }
 
@@ -170,13 +163,6 @@ bool MCDriver<ShapeType>::CollisionDetectedWith(ShapeType *t, std::vector<ShapeT
     for(uint i=0;i<ghosts.size();i++)
         if (t->Intersects(ghosts[i]))
         {
-//            std::cout << "Collided with image particle: " ;//<< std::endl;
-/*
-            std::ofstream f;
-            f.open(std::string("ParticleGhost")+std::to_string(pg_counter++));
-            f << this->ToString(true);
-            f.close();
-*/
             return true;
         }
 

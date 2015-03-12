@@ -24,7 +24,7 @@ void PrintOutput(string str, MCDriver<T> &d);
 int output_count = 0;
 
 // Choose shape to use - valid choices: {Tetrahedron, Sphere}
-typedef Sphere ChosenShape;
+typedef Tetrahedron ChosenShape;
 
 // Some globals
 vector< MCDriver<ChosenShape>* > drivers;
@@ -114,6 +114,37 @@ void ParticleMoveTest(MCDriver<ChosenShape> *driver)
     }
 }
 
+// Check tetrahedra collision
+void TetrahedraCollideTest(MCDriver<ChosenShape> *driver)
+{
+    // Initialize one tetrahedron at the origin    
+    Shape *t = driver->particles[0];
+    t->Translate(Vector(1.5,0,0)-t->GetCOM());
+
+    t = driver->particles[1];
+    t->Translate(-t->GetCOM());
+    Vector dr(.9, 1.5, 0.8);
+    t->Translate(dr);
+
+    Shape *p0 = driver->particles[0];
+    Shape *p1 = driver->particles[1];
+
+    // Move the first particle towards the second in 10 steps
+    dr = Vector(dr - p0->GetCOM());
+    dr /= 10;
+    for(int i=0;i<10;i++)
+    {
+        p0->Translate(dr);
+
+        if(p0->Intersects(p1))
+            cout << i << ": Intersecting" << endl;
+        else
+            cout << i << ": Not Intersecting" << endl;
+
+        PrintOutput("ParticleMove", *driver);
+    }
+}
+
 // Make each move and undo it to make sure the moves are doing what they ought to
 void ApplyUndoTest(MCDriver<ChosenShape> *driver)
 {
@@ -141,7 +172,8 @@ void ApplyUndoTest(MCDriver<ChosenShape> *driver)
 void RunDebug()
 {
     MCDriver<ChosenShape> *driver = drivers[0];
-    ParticleMoveTest(driver);
+//    ParticleMoveTest(driver);
+    TetrahedraCollideTest(driver);
 }
 
 void RunProduction()

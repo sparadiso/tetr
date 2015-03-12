@@ -59,7 +59,7 @@ def ViewFile(fname, show=True, PaintGhosts=True):
         if show:
             mlab.show()
 
-def CreateImagesFromFiles(fnames, **kwargs):
+def CreateImagesFromFiles(fnames, ShowYN=False, **kwargs):
     i=0
     for fname in sorted(glob.glob("../{}*".format(fnames))):
         ViewFile(fname, False, **kwargs)
@@ -67,4 +67,6 @@ def CreateImagesFromFiles(fnames, **kwargs):
         mlab.savefig("out_{:02d}.png".format(i))
         i+=1
 
+        if ShowYN:
+            mlab.show()
         mlab.clf()
