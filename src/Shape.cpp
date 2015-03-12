@@ -35,9 +35,6 @@ void Shape::Rotate(Matrix rot_matrix)
 void Shape::Rotate(float roll, float pitch, float yaw)
 {
     Matrix r = Shape::GetRotationMatrix(roll, pitch, yaw);
-
-    for(uint i=0;i<this->periodic_images.size();i++)
-        this->periodic_images[i]->Rotate(r);
     this->Rotate(r);
 }
 
@@ -75,13 +72,6 @@ std::string Shape::ToString()
 // ========================================================================================================
 void Shape::Translate(Vector v)
 {
-    for(uint i=0;i<this->periodic_images.size();i++)
-    {
-        Shape *t = this->periodic_images[i];
-        for(uint j=0;j<t->vertices.size();j++)
-            t->vertices[j] += v;
-    }
-
     for(uint i=0;i<this->vertices.size();i++)
         this->vertices[i] += v;
 }

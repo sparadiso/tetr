@@ -91,13 +91,18 @@ void ParticleMoveTest(MCDriver<ChosenShape> *driver)
     driver->p_cell_move = 0.0;
 
     Cell *cell = &driver->cell;
+/*
     cell->h.setIdentity();
     cell->h *= sqrt(driver->particles.size());
+*/
 
     int total = GetParameter("DebugSteps", 2000);
     for(int i=0;i<total;i++)
     {
-        driver->MakeMove();
+        if(driver->MakeMove())
+            cout << "Accepted" << endl;
+        else
+            cout << "Rejected" << endl;
         PrintOutput("dbg",*driver);
     }
 }
@@ -160,8 +165,8 @@ void ApplyUndoTest(MCDriver<ChosenShape> *driver)
 void RunDebug()
 {
     MCDriver<ChosenShape> *driver = drivers[0];
-//    ParticleMoveTest(driver);
-    TetrahedraCollideTest(driver);
+    ParticleMoveTest(driver);
+//    TetrahedraCollideTest(driver);
 }
 
 void RunProduction()

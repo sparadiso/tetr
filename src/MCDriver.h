@@ -34,7 +34,8 @@ class MCDriver
     ~MCDriver();
 
     bool CollisionDetectedWith(ShapeType *t);
-    void ComputePeriodicGhosts(ShapeType *shape);
+    void UpdatePeriodicImages(ShapeType *shape);
+    void InitializePeriodicImages(ShapeType *shape);
     Real GetPackingFraction();
     bool MakeMove();
 
@@ -42,7 +43,7 @@ class MCDriver
     void SetCellShapeDelta(Real delta);
     void SetParticleTranslationDelta(Real delta);
 
-    std::string ToString(bool PrintGhostsYN=false);
+    std::string ToString(bool PrintImagesYN=false);
 
     // Simple controller to change the max move sizes to achieve a target acceptance rate.
     // Anecdotally, this doesn't seem to help too much.
@@ -68,7 +69,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         Real yaw = (rand() % 1000) / 1000.0 * 2*PI;
         
         // Initialize particle at the center, then try translation moves until one returns non-colliding 
-        Vector v(.5*n_particles, .5*n_particles, .5*n_particles);
+        Vector v(.5*n_particles*u(0, .1), .5*n_particles*u(0, .1), .5*n_particles*u(0, .1));
 
         // Create the particle and push it to the driver's particle list
         ShapeType *t = new ShapeType(v);
@@ -79,13 +80,18 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         this->particle_moves.push_back(new ParticleTranslation(t, dr));
 
         // Keep applying particle translations until a valid position is found
-        this->ComputePeriodicGhosts(t);
+        this->InitializePeriodicImages(t);
         while( this->CollisionDetectedWith(t) )
         {
             this->particle_moves.back()->Apply();
             this->cell.WrapShape(t);
+            this->UpdatePeriodicImages(t);
         }
            
+        // Now that we've settled on a position, wrap it and update the periodic images
+        this->cell.WrapShape(t);
+        this->UpdatePeriodicImages(t);
+        
         // Finally, add a rotation move
         this->particle_moves.push_back(new ParticleRotation(t, dtheta_particle));
     }
@@ -211,19 +217,24 @@ bool MCDriver<ShapeType>::MakeMove()
           )
         {
             accepted = false;
-            //std::cout << "Rejected on overlap: " << overlap_0 << ", " << overlap_1 << ", " << overlap_2 << ", " << 1-overlap_3 << std::endl;
         }
 
         // If we haven't ruled it out based on interior angles, check for collisions after the volume change
         if(accepted)
+        {
+            // Have to update the images before collision detection 
+            for(uint i=0;i<this->particles.size();i++)
+                this->UpdatePeriodicImages(this->particles[i]);
+
             for(uint i=0;i<this->particles.size();i++)
             {
-                // Check for collisions - CollisionDetectedWith returns true if collisions are detected
+                // Check for collisions 
                 accepted = !(this->CollisionDetectedWith(this->particles[i]));
 
                 if(!accepted)
                     break;
             }
+        }
         
         // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor
         if(accepted)
@@ -239,6 +250,14 @@ bool MCDriver<ShapeType>::MakeMove()
             else
                 accepted = false;
 
+        }
+
+        // If the move wasn't accepted, we need to revert the cell 
+        if(!accepted)
+        {
+            AttemptedMove->Undo();
+            for(uint i=0;i<this->particles.size();i++)
+                this->UpdatePeriodicImages(this->particles[i]);
         }
     }
     else
@@ -269,15 +288,20 @@ bool MCDriver<ShapeType>::MakeMove()
             if (u(0,1) < p)
             {
                 accepted = true;
-                this->cell.WrapShape(t);
             }
             else
                 accepted = false;
         }
-    }
+    
+        if(accepted)
+        {
+            this->cell.WrapShape(t);
+            this->UpdatePeriodicImages(t);
+        }
 
-    if(!accepted)
-        AttemptedMove->Undo();
+        if(!accepted)
+            AttemptedMove->Undo();
+    }
 
     return accepted;
 }
@@ -288,34 +312,57 @@ Real MCDriver<ShapeType>::GetPackingFraction()
     return this->particles.size() * this->particles[0]->GetVolume() / this->cell.GetVolume();
 }
 
-// Generate all periodic images of the particles in the cell
+// Update periodic images
 template <class ShapeType>
-void MCDriver<ShapeType>::ComputePeriodicGhosts(ShapeType* t)
+void MCDriver<ShapeType>::UpdatePeriodicImages(ShapeType *t)
 {
-    // Clear the current list of images if it's already populated
-    for(uint i=0;i<t->periodic_images.size();i++)
-        delete t->periodic_images[i];
-    t->periodic_images.clear();
+    int ghost_idx = 0;
 
     // [j, k, l] defines a periodic image to check - we only check the first shell, which is *not* rigorous
     // but we also restrict the minimum internal cell angles to avoid risking second-shell collisions.
-    for(int j=-1;j<2;j++) 
-    for(int k=-1;k<2;k++) 
+    for(int j=-1;j<2;j++)
+    for(int k=-1;k<2;k++)
     for(int l=-1;l<2;l++)
     {
         if(!(j==0&&k==0&&l==0))
         {
             Vector index(j,k,l);
 
-            ShapeType *ghost = new ShapeType(*t);
+            ShapeType *ghost = reinterpret_cast<ShapeType*>(t->periodic_images[ghost_idx++]);
+            // Copy the particle
+            for(uint i=0;i<t->vertices.size();i++)
+                ghost->vertices[i] = t->vertices[i];
+
+            // Translate the ghost to its image position
             ghost->Translate(this->cell.h * index);
-            t->periodic_images.push_back(ghost);
         }
     }
 }
 
+// Generate all periodic images of the particles in the cell
 template <class ShapeType>
-std::string MCDriver<ShapeType>::ToString(bool PrintGhosts)
+void MCDriver<ShapeType>::InitializePeriodicImages(ShapeType* t)
+{
+    // Clear the current list of images if it's already populated
+    for(uint i=0;i<t->periodic_images.size();i++)
+        delete t->periodic_images[i];
+    t->periodic_images.clear();
+
+    for(int j=-1;j<2;j++)
+    for(int k=-1;k<2;k++)
+    for(int l=-1;l<2;l++)
+    {
+        if(!(j==0&&k==0&&l==0))
+        {
+            t->periodic_images.push_back(new ShapeType(*t));
+        }
+    }
+
+    this->UpdatePeriodicImages(t);
+}
+
+template <class ShapeType>
+std::string MCDriver<ShapeType>::ToString(bool PrintImages)
 {
     std::string s = "";
 
@@ -329,7 +376,7 @@ std::string MCDriver<ShapeType>::ToString(bool PrintGhosts)
         s += std::string("particle: ") + this->particles[i]->ToString() + "\n";
     }
 
-    if(PrintGhosts)
+    if(PrintImages)
     {
         // Now the ghosts
         for(uint i=0;i<this->particles.size();i++)
@@ -337,7 +384,7 @@ std::string MCDriver<ShapeType>::ToString(bool PrintGhosts)
             ShapeType *shape = this->particles[i];
             for(uint j=0;j<shape->periodic_images.size();j++)
             {
-                s += std::string("ghost: ") + shape->periodic_images[i]->ToString() + "\n";
+                s += std::string("ghost: ") + shape->periodic_images[j]->ToString() + "\n";
             }
         }
     }

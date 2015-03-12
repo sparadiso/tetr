@@ -17,6 +17,7 @@ class Shape
     virtual void Rotate(float roll, float pitch, float yaw);
     virtual void Translate(Vector v);
 
+    void UpdatePeriodicImages();
     std::string ToString();
 
     // Virtual destructor
