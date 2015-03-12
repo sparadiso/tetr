@@ -3,15 +3,18 @@
 
 class Shape
 {
+    private:
+    void Rotate(Matrix rot_matrix);
+
     public:
     std::vector<Vector> vertices;
+    std::vector<Shape*> periodic_images;
 
     // Member methods
     Vector GetCOM();
     static Matrix GetRotationMatrix(float roll, float pitch, float yaw);
 
     virtual void Rotate(float roll, float pitch, float yaw);
-    virtual void Rotate(Matrix rot_matrix);
     virtual void Translate(Vector v);
 
     std::string ToString();

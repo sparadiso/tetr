@@ -63,8 +63,7 @@ void ParticleRotation::Apply()
     Real pitch = u(-delta, delta);
     Real yaw = u(-delta, delta);
 
-    Matrix R = Shape::GetRotationMatrix(roll, pitch, yaw);
-    this->particle->Rotate(R);
+    this->particle->Rotate(roll, pitch, yaw);
 }
 void ParticleMove::Undo()
 {

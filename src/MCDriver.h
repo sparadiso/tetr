@@ -13,9 +13,6 @@ template <class ShapeType>
 class MCDriver
 {
     public:
-
-    //DEBUG
-
     Cell cell;
     std::vector<ShapeType*> particles;
 
@@ -23,51 +20,57 @@ class MCDriver
     std::vector<ParticleMove*> particle_moves;
     std::vector<CellMove*> cell_moves;
 
-    // Thermo parameters
+    // Thermodynamic parameters (Pressure and Inverse temperature - the latter only effects the bias potential)
     Real BetaP, Beta;
+
+    // We restrict the minimum internal angles by projecting each basis (unit) vector on the others. 
+    // If u_i <dot> u_j > Project_Threshold for any pair i!=j after a cell move, we reject it 
     Real Project_Threshold;
 
     // Move parameters
     Real p_cell_move; // Probability of choosing a cell move (shape or volume) vs single particle move
 
     MCDriver(int n_particles, Real p_cell_move = 0.1, Real dr_particle=0.1, Real dtheta_particle=0.2, Real dcell = 0.1);
-
     ~MCDriver();
 
-    static void __FreeGhosts(std::vector<ShapeType*> ghosts);
-
-    bool CollisionDetectedWith(ShapeType *t, std::vector<ShapeType*> ghosts);
+    bool CollisionDetectedWith(ShapeType *t);
+    void ComputePeriodicGhosts(ShapeType *shape);
     Real GetPackingFraction();
-    std::vector<ShapeType*> GetPeriodicGhosts();
     bool MakeMove();
+
+    // Setters to modify the maximum move size for cell shape/particle moves
     void SetCellShapeDelta(Real delta);
-    void SetCellVolumeDelta(Real delta);
     void SetParticleTranslationDelta(Real delta);
-    void UpdateMoveSizes(Real TargetAcceptance=0.3);
+
     std::string ToString(bool PrintGhostsYN=false);
+
+    // Simple controller to change the max move sizes to achieve a target acceptance rate.
+    // Anecdotally, this doesn't seem to help too much.
+    void UpdateMoveSizes(Real TargetAcceptance=0.3);
 };
 
 template <class ShapeType>
 MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
-                Real dr, Real dtheta_particle,  // Particle Move Parameters
-                Real dtheta_cell): cell(n_particles)
+                              Real dr, Real dtheta_particle,  // Particle Move Parameters
+                              Real dtheta_cell): cell(n_particles)
 {
     this->p_cell_move = p_cell_move;
 
     // Populate the cell moves
     this->cell_moves.push_back(new CellShapeMove(&this->cell, dtheta_cell));
-//    this->cell_moves.push_back(new CellVolumeMove(&this->cell, dtheta_cell));
 
     // Initialize the particles in valid (non-overlapping) positions
     for(int i=0;i<n_particles;i++)
     {
+        // Random starting orientation
         Real roll = (rand() % 1000) / 1000.0 * 2*PI;
         Real pitch = (rand() % 1000) / 1000.0 * 2*PI;
         Real yaw = (rand() % 1000) / 1000.0 * 2*PI;
         
-        // Initialize particle at the center, then try translation moves until one sticks
+        // Initialize particle at the center, then try translation moves until one returns non-colliding 
         Vector v(.5*n_particles, .5*n_particles, .5*n_particles);
 
+        // Create the particle and push it to the driver's particle list
         ShapeType *t = new ShapeType(v);
         t->Rotate(roll, pitch, yaw);
         this->particles.push_back(t);
@@ -75,19 +78,15 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         // Add a translation/rotation move for this particle
         this->particle_moves.push_back(new ParticleTranslation(t, dr));
 
-        this->particle_moves.back()->Apply();
-
         // Keep applying particle translations until a valid position is found
-        std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
-        while( this->CollisionDetectedWith(t, ghosts) )
+        this->ComputePeriodicGhosts(t);
+        while( this->CollisionDetectedWith(t) )
         {
             this->particle_moves.back()->Apply();
             this->cell.WrapShape(t);
-            __FreeGhosts(ghosts);
-            ghosts = this->GetPeriodicGhosts();
         }
            
-        // Populate the particle moves
+        // Finally, add a rotation move
         this->particle_moves.push_back(new ParticleRotation(t, dtheta_particle));
     }
 
@@ -125,33 +124,11 @@ void MCDriver<ShapeType>::SetCellShapeDelta(Real delta)
     if(this->cell_moves.size() > 0)
         this->cell_moves[0]->delta_max = delta;
 }
-template <class ShapeType>
-void MCDriver<ShapeType>::SetCellVolumeDelta(Real delta)
-{
-    if(this->cell_moves.size() > 1)
-        this->cell_moves[1]->delta_max = delta;
-}
 
+// Returns `true` if collisions are detected
 template <class ShapeType>
-void MCDriver<ShapeType>::__FreeGhosts(std::vector<ShapeType*> ghosts)
+bool MCDriver<ShapeType>::CollisionDetectedWith(ShapeType *t)
 {
-    for (uint j=0;j<ghosts.size();j++) 
-        delete ghosts[j];
-}
-
-/*
-template <class ShapeType>
-ShapeType MCDriver<ShapeType>::MinimumDistanceImage(ShapeType *t, ShapeType, *t2)
-{
-    // Given a shape `t`, find the image that is closest to t2
-}
-*/
-
-// Returns TRUE if collisions ARE detected
-template <class ShapeType>
-bool MCDriver<ShapeType>::CollisionDetectedWith(ShapeType *t, std::vector<ShapeType*> ghosts)
-{
-
     // First, check collisions with other particles
     for(uint i=0;i<particles.size();i++)
         if (t->Intersects(particles[i]) && (t->GetCOM() - particles[i]->GetCOM()).norm() > .00001 )
@@ -159,12 +136,15 @@ bool MCDriver<ShapeType>::CollisionDetectedWith(ShapeType *t, std::vector<ShapeT
             return true;
         }
 
-    // Now check collisions with periodic images
-    for(uint i=0;i<ghosts.size();i++)
-        if (t->Intersects(ghosts[i]))
-        {
-            return true;
-        }
+    for(uint i=0;i<particles.size();i++)
+    {
+        ShapeType *particle = this->particles[i];
+
+        // Now check collisions with periodic images
+        for(uint j=0;j<particle->periodic_images.size();j++)
+            if (t->Intersects(particle->periodic_images[j]))
+                return true;
+    }
 
     return false;
 }
@@ -234,28 +214,15 @@ bool MCDriver<ShapeType>::MakeMove()
             //std::cout << "Rejected on overlap: " << overlap_0 << ", " << overlap_1 << ", " << overlap_2 << ", " << 1-overlap_3 << std::endl;
         }
 
-        // Compute ghost images if this is a volume move
-        std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
-
         // If we haven't ruled it out based on interior angles, check for collisions after the volume change
         if(accepted)
             for(uint i=0;i<this->particles.size();i++)
             {
                 // Check for collisions - CollisionDetectedWith returns true if collisions are detected
-                accepted = !(this->CollisionDetectedWith(this->particles[i], ghosts));
+                accepted = !(this->CollisionDetectedWith(this->particles[i]));
 
                 if(!accepted)
-                {   
-                    //std::cout << "Failed for collision" << std::endl;
-                    /*
-                        std::ofstream f;
-                        f.open("Collision");
-                        f << this->ToString(true);
-                        f.close();
-                        exit(0);
-                    */
                     break;
-                }
             }
         
         // If accepted is still true, then no collisions happened. In this case, accept on the Boltzmann factor
@@ -273,16 +240,9 @@ bool MCDriver<ShapeType>::MakeMove()
                 accepted = false;
 
         }
-
-//        std::cout << "Accepted: " << accepted << std::endl;
-
-        // Free up the ghost images
-        __FreeGhosts(ghosts);
     }
     else
     {
-        //std::cout << "Trying particle move" << std::endl;
-
         // randomly select a particle move
         int move_index = rand() % this->particle_moves.size();
         ParticleMove *move = this->particle_moves[move_index];
@@ -291,18 +251,14 @@ bool MCDriver<ShapeType>::MakeMove()
         ShapeType *t = reinterpret_cast<ShapeType*>(move->particle);
 
         Vector s_old = this->cell.PartialCoords(t->GetCOM());
-        //std::cout << s_old << std::endl;
         move->Apply();
         Vector s_new = this->cell.PartialCoords(t->GetCOM());
 
-        // Compute ghost images 
-        std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
-        
         // Check for collisions - CollisionDetectedWith returns true if collisions are detected
-        accepted = !(this->CollisionDetectedWith(t, ghosts));
+        accepted = !(this->CollisionDetectedWith(t));
 
         // If no collisions, check on internal energy due to the potential
-        if(accepted)
+        if(accepted && this->Beta > 0)
         {
             // Parabolic potential 
             Vector center(.5,.5,.5);
@@ -317,22 +273,11 @@ bool MCDriver<ShapeType>::MakeMove()
             }
             else
                 accepted = false;
-
-//            std::cout << "Final acceptance: " << accepted << std::endl;
         }
-
-        __FreeGhosts(ghosts);
     }
 
     if(!accepted)
-    {
-        //std::cout << "Not accepted.." << accepted << std::endl;
         AttemptedMove->Undo();
-    }
-    else
-    {
-        //std::cout << "Accepted.." << accepted << std::endl;
-    }
 
     return accepted;
 }
@@ -345,32 +290,28 @@ Real MCDriver<ShapeType>::GetPackingFraction()
 
 // Generate all periodic images of the particles in the cell
 template <class ShapeType>
-std::vector<ShapeType*> MCDriver<ShapeType>::GetPeriodicGhosts()
+void MCDriver<ShapeType>::ComputePeriodicGhosts(ShapeType* t)
 {
-    std::vector<ShapeType*> ghosts;
+    // Clear the current list of images if it's already populated
+    for(uint i=0;i<t->periodic_images.size();i++)
+        delete t->periodic_images[i];
+    t->periodic_images.clear();
 
-    // dr = h * (s_i - s_j + Indices) where Indices = [{-1,0,1}, ... ]
-    for(uint i=0;i<particles.size();i++)
+    // [j, k, l] defines a periodic image to check - we only check the first shell, which is *not* rigorous
+    // but we also restrict the minimum internal cell angles to avoid risking second-shell collisions.
+    for(int j=-1;j<2;j++) 
+    for(int k=-1;k<2;k++) 
+    for(int l=-1;l<2;l++)
     {
-        ShapeType *t = particles[i];
-
-        // [j, k, l] define a periodic image to check - this only checks the first shell.
-        for(int j=-1;j<2;j++) 
-        for(int k=-1;k<2;k++) 
-        for(int l=-1;l<2;l++)
+        if(!(j==0&&k==0&&l==0))
         {
-            if(!(j==0&&k==0&&l==0))
-            {
-                Vector index(j,k,l);
+            Vector index(j,k,l);
 
-                ShapeType *ghost = new ShapeType(*t);
-                ghost->Translate(this->cell.h * index);
-                ghosts.push_back(ghost);
-            }
+            ShapeType *ghost = new ShapeType(*t);
+            ghost->Translate(this->cell.h * index);
+            t->periodic_images.push_back(ghost);
         }
     }
-
-    return ghosts;
 }
 
 template <class ShapeType>
@@ -391,12 +332,14 @@ std::string MCDriver<ShapeType>::ToString(bool PrintGhosts)
     if(PrintGhosts)
     {
         // Now the ghosts
-        std::vector<ShapeType*> ghosts = this->GetPeriodicGhosts();
-        for(uint i=0;i<ghosts.size();i++)
+        for(uint i=0;i<this->particles.size();i++)
         {
-            s += std::string("ghost: ") + ghosts[i]->ToString() + "\n";
+            ShapeType *shape = this->particles[i];
+            for(uint j=0;j<shape->periodic_images.size();j++)
+            {
+                s += std::string("ghost: ") + shape->periodic_images[i]->ToString() + "\n";
+            }
         }
-        __FreeGhosts(ghosts);
     }
 
     return s;

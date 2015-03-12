@@ -70,7 +70,6 @@ int main(int argc, char* argv[])
         d->BetaP = pressures[i];
         d->Beta = GetParameter("potential", 0);
         d->SetCellShapeDelta(GetParameter("dcell", 0.1));
-        d->SetCellVolumeDelta(GetParameter("dv", 0.1));
         d->SetParticleTranslationDelta(GetParameter("dr", 0.1));
         d->Project_Threshold = GetParameter("ProjectionThreshold", 0.3);
         
@@ -98,18 +97,7 @@ void ParticleMoveTest(MCDriver<ChosenShape> *driver)
     int total = GetParameter("DebugSteps", 2000);
     for(int i=0;i<total;i++)
     {
-        for(uint j=0;j<driver->particle_moves.size();j+=2)
-        {
-            Move *m = driver->particle_moves[j];
-
-            m->Apply();
-
-            vector<ChosenShape*> ghosts = driver->GetPeriodicGhosts();
-            if(driver->CollisionDetectedWith(driver->particles[j/2], ghosts))
-                m->Undo();
-            driver->__FreeGhosts(ghosts);
-        }
-
+        driver->MakeMove();
         PrintOutput("dbg",*driver);
     }
 }
