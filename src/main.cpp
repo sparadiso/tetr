@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
         // Set options
         d->BetaP = GetParameter(string("p")+to_string(i), 100);
         d->SetCellShapeDelta(GetParameter("dcell", 0.02));
-        d->SetParticleTranslationDelta(GetParameter("dr", 0.03));
+        d->SetParticleTranslationDelta(GetParameter("dr", 0.02));
         d->Project_Threshold = GetParameter("ProjectionThreshold", 0.65);
         
         drivers.push_back(d);
@@ -77,13 +77,16 @@ int main(int argc, char* argv[])
     return 0;
 }
 
+// ============================================================================
+// Run the actual MC simulation
+// ============================================================================
 template<class T>
 void RunProduction(vector< MCDriver<T>* > drivers)
 {
     MCDriver<T>* best;
 
     // Now run the MC Simulation
-    int total = GetParameter("n_steps", 150000);
+    int total = GetParameter("n_steps", 10000000);
 
     for(int i=0;i<total;i++)
     {
@@ -126,10 +129,11 @@ void RunProduction(vector< MCDriver<T>* > drivers)
                 cout << "Volume: " << drivers[j]->cell.GetVolume() << endl;
                 cout << "Pack Fraction: " << drivers[j]->GetPackingFraction() << endl;
                 
-                // Take this opportunity to update the step sizes
+                // Print the cell move acceptance rate for each pressure to guide future choices
                 cout << "Cell Accept Ratio: ";
                 for(uint k=0;k<drivers[j]->cell_moves.size();k++)
                     cout << drivers[j]->cell_moves[k]->GetRatio() << ", ";
+                cout << endl;
                 cout << endl;
             }
         }
@@ -150,6 +154,9 @@ void RunProduction(vector< MCDriver<T>* > drivers)
             PrintOutput("best", *best);
             BestSolutionPrinted = best_fraction;
         }   
+
+        if (best_fraction > BestSolution)
+            BestSolution = best_fraction;
     }
 
     cout << "FINISHED - Best Solution: " << best->GetPackingFraction() << endl;
@@ -157,10 +164,13 @@ void RunProduction(vector< MCDriver<T>* > drivers)
     // Print the final best system to a local file named "RESULT"
     ofstream f;
     f.open("RESULT");
-    f << best->ToString(true);
+    f << best->ToString();
     f.close();
 }
 
+// ============================================================================
+// A few helper functions
+// ============================================================================
 template <class T>
 void PrintOutput(string str, MCDriver<T> &driver)
 {
@@ -171,7 +181,7 @@ void PrintOutput(string str, MCDriver<T> &driver)
 
     ofstream f;
     f.open(fname);
-    f << driver.ToString(true);
+    f << driver.ToString();
     f.close();
 }
 

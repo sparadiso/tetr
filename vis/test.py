@@ -11,9 +11,7 @@ def ParseCell(fname):
         particles = []
         for line in f:
             line = line.split()
-            if line[0]=='ghost:':
-                break
-            particles.append(np.array(line[1:], float))
+            particles.append(np.array(line, float))
 
     return [e0, e1, e2], particles
 
@@ -46,7 +44,7 @@ def ViewFile(fname, show=True, PaintGhosts=True):
 
         for line in f.readlines():
             l = line.split()
-            t = Tetrahedron(*np.array(l[1:]))
+            t = Tetrahedron(*np.array(l))
 
             tag = l[0].strip()
             if tag == "ghost:":

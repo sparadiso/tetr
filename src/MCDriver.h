@@ -47,7 +47,7 @@ class MCDriver
     void SetCellShapeDelta(Real delta);
     void SetParticleTranslationDelta(Real delta);
 
-    std::string ToString(bool PrintImagesYN=false);
+    std::string ToString();
 
     // Simple controller to change the max move sizes to achieve a target acceptance rate.
     // Anecdotally, this doesn't seem to help too much.
@@ -342,7 +342,7 @@ void MCDriver<ShapeType>::InitializePeriodicImages(ShapeType* t)
 }
 
 template <class ShapeType>
-std::string MCDriver<ShapeType>::ToString(bool PrintImages)
+std::string MCDriver<ShapeType>::ToString()
 {
     std::string s = "";
 
@@ -353,20 +353,7 @@ std::string MCDriver<ShapeType>::ToString(bool PrintImages)
     // Now the particles
     for(uint i=0;i<this->particles.size();i++)
     {
-        s += std::string("particle: ") + this->particles[i]->ToString() + "\n";
-    }
-
-    if(PrintImages)
-    {
-        // Now the ghosts
-        for(uint i=0;i<this->particles.size();i++)
-        {
-            ShapeType *shape = this->particles[i];
-            for(uint j=0;j<shape->periodic_images.size();j++)
-            {
-                s += std::string("ghost: ") + shape->periodic_images[j]->ToString() + "\n";
-            }
-        }
+        s += this->particles[i]->ToString() + "\n";
     }
 
     return s;
