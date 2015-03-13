@@ -18,7 +18,8 @@ Best recorded **Tetrahedron** packing (4 tetrahedra): 82.5% - a bit below the be
 
 ## Usage
 
-There are a number of cmdline arguments for setting runtime variables:
+There are a number of cmd line arguments for setting runtime variables:
+
 *Main System Variables*: n_particles, n_steps, n_drivers, p{i}
 
 *Main Move Parameters*: p_cell_move, ProjectionThreshold, dcell, dr
@@ -31,7 +32,7 @@ n_steps - Number of MC moves to perform
 
 n_drivers - Number of parallel MCDrivers to run (each system runs simultaneously, with the occasional parallel tempering move attempted to swap the pressures of two randomly selected systems)
 
-p{i} - For each driver (of which there are `n_drivers`), a corresponding p{i} (p0, p1, p2, etc) must be supplied which set the initial pressures of each system.
+p{i} - For each driver (of which there are `n_drivers`), a corresponding p{i} (p0, p1, p2, etc) must be supplied which sets the initial pressure of each system.
 
 p_cell_move - Probability of choosing a cell move v.s. a particle move
 
@@ -43,6 +44,6 @@ dr - Maximum particle displacement/rotation move size (measured in radians for r
 
 Example Usage (with suggested values):
 
-./main n_particles 4 n_steps 7000000 n_drivers 4 p0 40 p1 100 p2 300 p3 1000
+./main n_particles 4 n_steps 3000000 n_drivers 4 p0 50 p1 250 p2 500 p3 1000 dcell .01 dr .02 ProjectionThreshold 0.7
 
-*note* the code can be run with Tetrahedra or **Sphere**s, but this choice must be made by changing `ChosenShape` in src/main.cpp and recompiling. 
+*note* the code can be run with **Tetrahedra** or **Spheres**, but this choice must be made by changing `ChosenShape` in src/main.cpp and recompiling. 
