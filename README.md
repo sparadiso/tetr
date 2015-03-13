@@ -22,9 +22,9 @@ Best recorded **Tetrahedron** packing (4 tetrahedra): 82.5% - a bit below the be
 
 There are a number of cmd line arguments for setting runtime variables:
 
-*Main System Variables*: n_particles, n_steps, n_drivers, p{i}
+#### Main System Variables: n_particles, n_steps, n_drivers, p{i}
 
-*Main Move Parameters*: p_cell_move, ProjectionThreshold, dcell, dr
+#### Main Move Parameters: p_cell_move, ProjectionThreshold, dcell, dr
 
 n_particles - Number of particles in the cell
 
