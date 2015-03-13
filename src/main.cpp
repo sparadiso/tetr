@@ -14,35 +14,38 @@
 
 using namespace std;
 
-void RunProduction();
-void RunDebug();
-
-template <class T>
-void PrintOutput(string str, MCDriver<T> &d);
-
-// Output
-int output_count = 0;
-
 // Choose shape to use - valid choices: {Tetrahedron, Sphere}
 typedef Tetrahedron ChosenShape;
 
-// Some globals
-vector< MCDriver<ChosenShape>* > drivers;
+// Output
+int output_count = 0;
+Real BestSolution = 0;
+Real BestSolutionPrinted = 0;
+
+template <class T>
+void PrintOutput(string str, MCDriver<T> &d);
+template <class T>
+MCDriver<T>* GetBestDriver(vector<MCDriver<T>*> drivers);
 
 // Command line arg parsing
 vector<string> keys;
 vector<Real> values;
 Real GetParameter(string p, Real def = -1234321);
 
+template <class T>
+void RunProduction(vector<MCDriver<T>*> drivers);
+
 // Main Declaration
 int main(int argc, char* argv[])
 {
+    // Parse cmdline args
     for(int i=1;i<argc;i+=2)
     {
         keys.push_back(string(argv[i]));
         values.push_back(atof(argv[i+1]));
     }
 
+    // Initialize the RNG
     srand(time(NULL));
 
     // Create the subsystems for the parallel tempering scheme
@@ -50,130 +53,37 @@ int main(int argc, char* argv[])
     // periodic pressure swap moves between systems to get out of local minima
     // This typically works better than simulated annealing (ie. slow pressure ramp)
     int n_drivers = GetParameter("n_drivers", 1);
-    Real *pressures = new Real[n_drivers];
-    for(int i=0;i<n_drivers;i++)
-    {
-        pressures[i] = GetParameter(string("p")+to_string(i), 100);
-    }
 
-    // Options
+    // Driver Options
     int n_particles = GetParameter("n_particles", 2);
     Real p_cell_move = GetParameter("p_cell_move", 1.0/(n_particles+1));
-    //Real cell_shape_delta = 0.05;
         
-    // Construct the subsystems and add them to the `drivers` list
+    // Construct the subsystems and add them to a driver list
+    vector< MCDriver<ChosenShape>* > drivers;
     for(int i=0;i<n_drivers;i++)
     {
         MCDriver<ChosenShape> *d = new MCDriver<ChosenShape>(n_particles, p_cell_move);
 
         // Set options
-        d->BetaP = pressures[i];
+        d->BetaP = GetParameter(string("p")+to_string(i), 100);
         d->SetCellShapeDelta(GetParameter("dcell", 0.02));
         d->SetParticleTranslationDelta(GetParameter("dr", 0.03));
-        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.6);
+        d->Project_Threshold = GetParameter("ProjectionThreshold", 0.65);
         
         drivers.push_back(d);
     }
 
-    // Run the simulation
-    if(GetParameter("Debug", 0) < .9)
-        RunProduction();
-    else
-        RunDebug();
-
+    RunProduction(drivers);
     return 0;
 }
 
-// Make each move and undo it to make sure the moves are doing what they ought to
-void ParticleMoveTest(MCDriver<ChosenShape> *driver)
+template<class T>
+void RunProduction(vector< MCDriver<T>* > drivers)
 {
-    driver->p_cell_move = 0.0;
+    MCDriver<T>* best;
 
-    Cell *cell = &driver->cell;
-/*
-    cell->h.setIdentity();
-    cell->h *= sqrt(driver->particles.size());
-*/
-
-    int total = GetParameter("DebugSteps", 2000);
-    for(int i=0;i<total;i++)
-    {
-        if(driver->MakeMove())
-            cout << "Accepted" << endl;
-        else
-            cout << "Rejected" << endl;
-        PrintOutput("dbg",*driver);
-    }
-}
-
-// Check tetrahedra collision
-void TetrahedraCollideTest(MCDriver<ChosenShape> *driver)
-{
-    // Initialize one tetrahedron at the origin    
-    Shape *t = driver->particles[0];
-    t->Translate(Vector(1.5,0,0)-t->GetCOM());
-
-    t = driver->particles[1];
-    t->Translate(-t->GetCOM());
-    Vector dr(.9, 1.5, 0.8);
-    t->Translate(dr);
-
-    Shape *p0 = driver->particles[0];
-    Shape *p1 = driver->particles[1];
-
-    // Move the first particle towards the second in 10 steps
-    dr = Vector(dr - p0->GetCOM());
-    dr /= 10;
-    for(int i=0;i<10;i++)
-    {
-        p0->Translate(dr);
-
-        if(p0->Intersects(p1))
-            cout << i << ": Intersecting" << endl;
-        else
-            cout << i << ": Not Intersecting" << endl;
-
-        PrintOutput("ParticleMove", *driver);
-    }
-}
-
-// Make each move and undo it to make sure the moves are doing what they ought to
-void ApplyUndoTest(MCDriver<ChosenShape> *driver)
-{
-    for(uint i=0;i<driver->cell_moves.size();i++)
-    {   
-        Move *m = driver->cell_moves[i];
-        PrintOutput("CellMove", *driver);
-        m->Apply();
-        PrintOutput("CellMove", *driver);
-        m->Undo();
-        PrintOutput("CellMove", *driver);
-    }
-
-    for(uint i=0;i<driver->particle_moves.size();i++)
-    {   
-        Move *m = driver->cell_moves[i];
-        PrintOutput("ParticleMove", *driver);
-        m->Apply();
-        PrintOutput("ParticleMove", *driver);
-        m->Undo();
-        PrintOutput("ParticleMove", *driver);
-    }
-}
-
-void RunDebug()
-{
-    MCDriver<ChosenShape> *driver = drivers[0];
-    ParticleMoveTest(driver);
-//    TetrahedraCollideTest(driver);
-}
-
-void RunProduction()
-{
     // Now run the MC Simulation
     int total = GetParameter("n_steps", 150000);
-    Real BestSolution = 0;
-    Real BestSolutionPrinted = 0;
 
     for(int i=0;i<total;i++)
     {
@@ -221,10 +131,6 @@ void RunProduction()
                 for(uint k=0;k<drivers[j]->cell_moves.size();k++)
                     cout << drivers[j]->cell_moves[k]->GetRatio() << ", ";
                 cout << endl;
-                if(GetParameter("UpdateMoveSizeYN", 0) > .99)
-                    drivers[j]->UpdateMoveSizes(0.3);
-
-                cout << endl;
             }
         }
 
@@ -234,26 +140,25 @@ void RunProduction()
             drivers[j]->MakeMove();
         }
 
-        // Keep track of the best solution
-        for(uint j=0;j<drivers.size();j++)
-        {
-            Real pack_fraction = drivers[j]->GetPackingFraction();
+        // Keep track of the best solution over time
+        best = GetBestDriver(drivers);
+        Real best_fraction = best->GetPackingFraction();
 
-            if ( BestSolution < pack_fraction )
-            {
-                // Only print it to a file if we've improved by at least 2%
-                if(pack_fraction - BestSolutionPrinted > 0.05)
-                {
-                    PrintOutput("best", *drivers[j]);
-                    BestSolutionPrinted = pack_fraction;
-                }   
-                BestSolution = pack_fraction;
-            }
-        }
+        // Only print it to a file if we've improved by at least 2%
+        if(best_fraction - BestSolutionPrinted > 0.02)
+        {
+            PrintOutput("best", *best);
+            BestSolutionPrinted = best_fraction;
+        }   
     }
 
-    cout << "FINISHED - Best Solution: " << BestSolution << endl;
-    PrintOutput("best", *drivers[0]);
+    cout << "FINISHED - Best Solution: " << best->GetPackingFraction() << endl;
+    
+    // Print the final best system to a local file named "RESULT"
+    ofstream f;
+    f.open("RESULT");
+    f << best->ToString(true);
+    f.close();
 }
 
 template <class T>
@@ -285,3 +190,23 @@ Real GetParameter(string param_name, Real default_value)
     cout << "Error: Couldn't find a value for parameter " << param_name << " in cmd args" << endl;
     exit(1);
 }
+
+template <class T>
+MCDriver<T>* GetBestDriver(vector<MCDriver<T>*> drivers)
+{
+    MCDriver<T>* best;
+    Real best_fraction = 0; 
+
+    for(uint j=0;j<drivers.size();j++)
+    {
+        Real pack_fraction = drivers[j]->GetPackingFraction();
+
+        if ( best_fraction < pack_fraction )
+        {
+            best_fraction = pack_fraction;
+            best = drivers[j];
+        }
+    }
+    return best;
+}
+
