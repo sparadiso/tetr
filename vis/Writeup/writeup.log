@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/Debian) (format=pdflatex 2014.4.20)  12 MAR 2015 23:38
+This is pdfTeX, Version 3.1415926-2.5-1.40.14 (TeX Live 2013/Debian) (format=pdflatex 2014.4.20)  13 MAR 2015 00:38
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -290,31 +290,41 @@ File: RepeatCrystalCropped.png Graphic file (type png)
 <use RepeatCrystalCropped.png>
 Package pdftex.def Info: RepeatCrystalCropped.png used on input line 46.
 (pdftex.def)             Requested size: 195.36942pt x 180.67455pt.
- [2 <./UnitCellCropped.png> <./RepeatCrystalCropped.png>] (./writeup.aux) ) 
+ <hist.png, id=20, 380.1402pt x 283.5393pt>
+File: hist.png Graphic file (type png)
+
+<use hist.png>
+Package pdftex.def Info: hist.png used on input line 55.
+(pdftex.def)             Requested size: 380.13925pt x 283.5386pt.
+
+
+LaTeX Warning: `!h' float specifier changed to `!ht'.
+
+[2 <./UnitCellCropped.png> <./RepeatCrystalCropped.png>] [3 <./hist.png>]
+(./writeup.aux) ) 
 Here is how much of TeX's memory you used:
- 2915 strings out of 493307
- 39270 string characters out of 6139905
+ 2920 strings out of 493307
+ 39329 string characters out of 6139905
  108832 words of memory out of 5000000
- 6327 multiletter control sequences out of 15000+600000
+ 6331 multiletter control sequences out of 15000+600000
  12717 words of font info for 49 fonts, out of 8000000 for 9000
  957 hyphenation exceptions out of 8191
  38i,6n,32p,1782b,263s stack positions out of 5000i,500n,10000p,200000b,80000s
-</us
-r/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/shar
-e/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb></usr/share/texl
-ive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></usr/share/texlive/te
-xmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/share/texlive/texmf-dis
-t/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/texlive/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/texmf-dist/fonts/type1/
-public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/
-amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy
-10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
-
-Output written on writeup.pdf (2 pages, 403773 bytes).
+</usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/
+cmbx12.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10
+.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
+/usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb></usr/sh
+are/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></usr/share/tex
+live/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/share/texlive/te
+xmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/share/texlive/texmf-dis
+t/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/share/texlive/texmf-dist/fonts/
+type1/public/amsfonts/cm/cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/pu
+blic/amsfonts/cm/cmsy10.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/a
+msfonts/cm/cmsy8.pfb>
+Output written on writeup.pdf (3 pages, 447433 bytes).
 PDF statistics:
- 60 PDF objects out of 1000 (max. 8388607)
- 40 compressed objects within 1 object stream
+ 65 PDF objects out of 1000 (max. 8388607)
+ 42 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 11 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 16 words of extra memory for PDF output out of 10000 (max. 10000000)
 
