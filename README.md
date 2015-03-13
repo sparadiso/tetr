@@ -10,8 +10,9 @@ The driver class **MCDriver** populates a list of **Shape**s, initializes a **Ce
 
 All collision detection is handled in the derived shape classes (**Sphere** and **Tetrahedron**) with help from "Collisions.cpp" pulled from the challenge site.
 
-Best recorded **Sphere** packing (6 spheres): 73.33% 
+## Summary of results
 
+Best recorded **Sphere** packing (6 spheres): 73.33% 
 Best recorded **Tetrahedron** packing (4 tetrahedra): 82.5% - a bit below the best known packing of ~85% (and not the same structure).
 
 ## Usage
