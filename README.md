@@ -10,6 +10,8 @@ The driver class **MCDriver** populates a list of **Shape**s, initializes a **Ce
 
 All collision detection is handled in the derived shape classes (**Sphere** and **Tetrahedron**) with help from "Collisions.cpp" pulled from the challenge site.
 
+Results of the simulation are printed to files with the following name convention: `output/best%04d`. The configuration for the optimal packing found will be in the last file in this list.
+
 ## Summary of results
 
 Best recorded **Sphere** packing (6 spheres): 73.33% 
