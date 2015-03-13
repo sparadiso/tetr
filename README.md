@@ -16,15 +16,13 @@ Best recorded **Sphere** packing (6 spheres): 73.33%
 
 Best recorded **Tetrahedron** packing (4 tetrahedra): 82.5% - a bit below the best known packing of ~85% (and not the same structure).
 
-## Usage
+### Parameter Explanation
 
 There are a number of cmd line arguments for setting runtime variables:
 
 *Main System Variables*: n_particles, n_steps, n_drivers, p{i}
 
 *Main Move Parameters*: p_cell_move, ProjectionThreshold, dcell, dr
-
-### Explanation
 
 n_particles - Number of particles in the cell
 
@@ -41,6 +39,10 @@ ProjectionThreshold - A stability parameter limiting the internal angles of the 
 dcell - Maximum size of a cell shape move. (Larger values lead to less efficient MC sampling and high move rejection, smaller values lead to poor phase space sampling).
 
 dr - Maximum particle displacement/rotation move size (measured in radians for rotations, edge lengths for displacements).
+
+## Usage
+
+First, you'll have to compile it. Assuming you have the standard libraries installed with gcc 4.7 or higher, the project should compile by just typing `make` in the root.
 
 Example Usage (with suggested values):
 
