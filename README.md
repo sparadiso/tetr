@@ -13,6 +13,7 @@ All collision detection is handled in the derived shape classes (**Sphere** and 
 ## Summary of results
 
 Best recorded **Sphere** packing (6 spheres): 73.33% 
+
 Best recorded **Tetrahedron** packing (4 tetrahedra): 82.5% - a bit below the best known packing of ~85% (and not the same structure).
 
 ## Usage
