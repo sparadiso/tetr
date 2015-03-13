@@ -28,6 +28,24 @@ def MakeMultipleImages():
     tr = [a+b+c for a, b, c in zip([e0,0,0,e0,e0,0,e0], [0,e1,0,e1,0,e1,e1], [0,0,e2,0,e2,e2,e2])]
     [cell.paint(e) for e in tr]
 
+def LoadFile(fname):
+    with open(fname) as f:
+        # First, read off the cell tensor
+        e0 = np.array(f.readline().split(), float)
+        e1 = np.array(f.readline().split(), float)
+        e2 = np.array(f.readline().split(), float)
+
+        cell = Cell(e0, e1, e2)
+
+        particles = []
+
+        # Read off the tetrahedra
+        for line in f.readlines():
+            l = line.split()
+            particles.append(Tetrahedron(*np.array(l)))
+
+    return cell, particles
+    
 def ViewFile(fname, show=True, PaintGhosts=True):
     with open(fname) as f:
         # First, read off the cell tensor

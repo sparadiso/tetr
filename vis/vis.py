@@ -6,20 +6,9 @@ class Cell(object):
     def __init__(self, e0, e1, e2):
         self.origin = [0,0,0]
         self.h = [np.array(e) for e in [e0,e1,e2]]
-        self.h_inv = np.linalg.inv(self.h)
 
     def getVolume(self):
         return np.dot(self.h[0], np.cross(self.h[1], self.h[2]))
-
-    def CreateGhost(self, pt):
-        s = np.dot(pt, self.h_inv)
-        pt_new = np.dot(np.mod(s, 1), self.h)
-        return pt_new
-
-    def is_inside(self, pt):
-        s = np.dot(pt, self.h_inv)
-
-        mlab.points3d(*pt, scale_factor=0.1)
 
     def paint(self, origin=[0,0,0]):
         origin = np.array(origin)
@@ -47,20 +36,13 @@ class Cell(object):
 class Tetrahedron(object):
     # pts is packed like the requested output: x1, y1, z1, x2, y2, z2, ... z4
     def __init__(self, *pts):
-        # default tetrahedron
-        self.points = 1/2.0 * np.array([[1,0,-1./np.sqrt(2)], 
-                       [-1, 0, -1/np.sqrt(2.)], 
-                       [0, 1, 1./np.sqrt(2.)], 
-                       [0, -1, 1./np.sqrt(2.)]])
-
-        if len(pts) > 0:
-            self.points = []
-            for i in range(len(pts)/3):
-                self.points.append( [ pts[3*i+j] for j in range(3) ] )
+        self.points = []
+        for i in range(len(pts)/3):
+            self.points.append( [ pts[3*i+j] for j in range(3) ] )
 
         self.points = np.array(self.points, float)
 
-    def translate(self, *dr):
+    def translate(self, dr):
         for p in self.points:
             p += np.array(dr)
 
@@ -77,3 +59,21 @@ class Tetrahedron(object):
             z = self.hull.points[:, 2] + origin[2]
 
             mlab.triangular_mesh(x,y,z,self.hull.simplices,colormap=colormap, opacity=alpha)
+
+def LoadFile(fname):
+    with open(fname) as f:
+        # First, read off the cell tensor
+        e0 = np.array(f.readline().split(), float)
+        e1 = np.array(f.readline().split(), float)
+        e2 = np.array(f.readline().split(), float)
+
+        cell = Cell(e0, e1, e2)
+
+        particles = []
+
+        # Read off the tetrahedra
+        for line in f.readlines():
+            l = line.split()
+            particles.append(Tetrahedron(*np.array(l)))
+
+    return cell, particles

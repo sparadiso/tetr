@@ -108,6 +108,9 @@ void RunProduction(vector< MCDriver<T>* > drivers)
             {
                 drivers[sys0]->BetaP = p1;
                 drivers[sys1]->BetaP = p0;
+
+                drivers[sys0]->cell_moves[0]->Reset();
+                drivers[sys1]->cell_moves[0]->Reset();
             }
         }
 
@@ -148,8 +151,8 @@ void RunProduction(vector< MCDriver<T>* > drivers)
         best = GetBestDriver(drivers);
         Real best_fraction = best->GetPackingFraction();
 
-        // Only print it to a file if we've improved by at least 2%
-        if(best_fraction - BestSolutionPrinted > 0.02)
+        // Only print it to a file if we've improved by at least 1%
+        if(best_fraction - BestSolutionPrinted > 0.01)
         {
             PrintOutput("best", *best);
             BestSolutionPrinted = best_fraction;
@@ -159,13 +162,7 @@ void RunProduction(vector< MCDriver<T>* > drivers)
             BestSolution = best_fraction;
     }
 
-    cout << "FINISHED - Best Solution: " << best->GetPackingFraction() << endl;
-    
-    // Print the final best system to a local file named "RESULT"
-    ofstream f;
-    f.open("RESULT");
-    f << best->ToString();
-    f.close();
+    cout << "FINISHED - Best Solution: " << BestSolution << endl;
 }
 
 // ============================================================================
