@@ -1,5 +1,4 @@
-#ifndef GLOBALS_H_
-#define GLOBALS_H_
+#pragma once
 
 #define PI 3.14159265359
 
@@ -15,4 +14,3 @@ typedef float Real;
 // Simple uniform RNG - real MC would require a better RNG, but this is fine for our purposes. 
 Real u(Real lower, Real upper);
 
-#endif

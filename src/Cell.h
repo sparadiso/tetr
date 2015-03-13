@@ -1,5 +1,4 @@
-#ifndef CELL_H_
-#define CELL_H_
+#pragma once
 
 #include "Globals.h"
 #include "Shape.h"
@@ -21,5 +20,3 @@ class Cell
     std::string ToString();
     void WrapShape(Shape *t);
 };
-
-#endif
