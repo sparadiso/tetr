@@ -6,7 +6,7 @@ An isothermal-isobaric ensemble Metropolis Monte Carlo code for the Citrine Tech
 
 Two main class clusters: **Moves** and **Shapes**
 
-The driver class **MCDriver** populates a list of **Shape**s, initializes a **Cell**, and performs MC **Move**s.
+The driver class **MCDriver** populates a list of **Shape**s, initializes a **Cell**, and performs MC **Moves**.
 
 All collision detection is handled in the derived shape classes (**Sphere** and **Tetrahedron**) with help from "Collisions.cpp" pulled from the challenge site.
 
