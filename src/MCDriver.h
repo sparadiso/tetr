@@ -72,7 +72,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         Real pitch = (rand() % 1000) / 1000.0 * 2*PI;
         Real yaw = (rand() % 1000) / 1000.0 * 2*PI;
         
-        // Initialize particle at the center, then try translation moves until one returns non-colliding 
+        // Initialize particle at a random location, then try translation moves until a non-colliding position is found
         Vector v(.5*n_particles*u(0, .1), .5*n_particles*u(0, .1), .5*n_particles*u(0, .1));
 
         // Create the particle and push it to the driver's particle list
@@ -80,7 +80,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         t->Rotate(roll, pitch, yaw);
         this->particles.push_back(t);
 
-        // Add a translation/rotation move for this particle
+        // Add a translation move for this particle
         this->particle_moves.push_back(new ParticleTranslation(t, dr));
 
         // Keep applying particle translations until a valid position is found
@@ -100,7 +100,7 @@ MCDriver<ShapeType>::MCDriver(int n_particles, Real p_cell_move,
         this->particle_moves.push_back(new ParticleRotation(t, dtheta_particle));
     }
 
-    // Create the cell and give it references to the particles
+    // Give cell a reference to each particle
     for(int i=0;i<n_particles;i++)
         cell.particles.push_back(particles[i]);
 }
