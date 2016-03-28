@@ -129,9 +129,17 @@ def load_solution(fname):
 
     return cell, particles
 
+
 def display_solution(fname):
     """
-    Quickie to plot
-    :param fname:
-    :return:
+    Quickie to plot a solution file
+
+    :param fname: full path to the solution file
     """
+
+    cell, particles = load_solution(fname)
+
+    cell.paint()
+
+    for particle in particles:
+        particle.paint()
