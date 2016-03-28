@@ -6,7 +6,7 @@ from mayavi import mlab
 
 best_fname = sorted(glob.glob("../output/best*"))[-1]
 
-cell, particles = LoadFile(best_fname)
+cell, particles = LoadSolution(best_fname)
 
 # Paint the scene
 cell.paint()
