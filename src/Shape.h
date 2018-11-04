@@ -1,4 +1,7 @@
+#ifndef _SHAPE_H
+#define _SHAPE_H
 #pragma once
+#include <vector>
 #include "Globals.h"
 
 class Shape
@@ -27,3 +30,4 @@ class Shape
     virtual bool Intersects(Shape *s) = 0;
     virtual Real GetVolume() = 0;
 };
+#endif // _SHAPE_H
